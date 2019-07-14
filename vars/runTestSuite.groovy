@@ -10,7 +10,7 @@ def call(String node_name,
          String gh_commit_status_account,
          Integer parallel_testrun_timeout,
          Integer serial_testrun_timeout,
-         Integer testsuite_timeout) {
+         Integer build_timeout) {
 
     wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, build_timeout) {
 
