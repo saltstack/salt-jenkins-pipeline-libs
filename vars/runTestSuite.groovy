@@ -12,7 +12,7 @@ def call(String node_name,
          Integer serial_testrun_timeout,
          Integer build_timeout) {
 
-    wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, build_timeout) {
+    wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout) {
 
         def chunks = [:]
         nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
