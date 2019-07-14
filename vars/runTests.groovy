@@ -12,7 +12,7 @@ def call(String checkout_directory,
                 stage('Create VM') {
                     retry(3) {
                         sh '''
-                        t=$(shuf -i 30-90 -n 1); echo "Sleeping $t seconds"; sleep $t
+                        t=$(shuf -i 1-30 -n 1); echo "Sleeping $t seconds"; sleep $t
                         bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
                         '''
                     }
