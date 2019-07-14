@@ -1,6 +1,6 @@
 def call(String checkout_directory,
          String stage_name,
-         String[] env_array,
+         env_array,
          Integer chunk_timeout) {
 
     def stage_slug = stage_name.replace('#', '').replace(' ', '-').toLowerCase()
