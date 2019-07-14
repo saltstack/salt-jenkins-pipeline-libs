@@ -12,7 +12,8 @@ def call(Closure body=null) {
         currentBuild.result = 'FAILURE'
         echo "Setting currentBuild.result to ${currentBuild.result}"
         throw e
+    } finally {
+        sendSlackNotification()
     }
-    sendSlackNotification()
 }
 // vim: ft=groovy ts=4 sts=4 et
