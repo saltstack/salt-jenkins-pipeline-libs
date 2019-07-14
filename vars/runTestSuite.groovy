@@ -14,49 +14,6 @@ def call(String node_name,
 
     wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout) {
 
-        def chunks = [:]
-        nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
-
-        // Integration Module Tests
-        for (int i=1; i<(integration_modules_chunks+1); i++) {
-            def chunk_no = i
-            def stagename = "Integration Modules #${chunk_no}" as String
-            def env_array = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
-            ] as String[]
-            chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-        }
-
-        // Integration State Tests
-        for (int i=1; i<(integration_states_chunks+1); i++) {
-            def chunk_no = i
-            def stagename = "Integration States #${chunk_no}"
-            def env_array = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_states_chunks --test-group=$chunk_no tests/integration/states"
-            ] as String[]
-            chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-        }
-
-        // Unit Tests
-        for (int i=1; i<(unit_chunks+1); i++) {
-            def chunk_no = i
-            def stagename = "Unit #${chunk_no}"
-            def env_array = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$unit_chunks --test-group=$chunk_no tests/unit"
-            ] as String[]
-            chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-        }
-
-        // All Other
-        for (int i=1; i<(other_chunks+1); i++) {
-            def chunk_no = i
-            def stagename = "All Other #${chunk_no}"
-            def env_array = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$other_chunks --test-group=$chunk_no --ignore=tests/integration/modules --ignore=tests/integration/states --ignore=tests/unit"
-            ] as String[]
-            chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-        }
-
         dir(checkout_directory) {
             // Checkout the repo
             stage('Clone') {
@@ -72,6 +29,51 @@ def call(String node_name,
         }
 
         stage('Parallel Test Run') {
+
+            def chunks = [:]
+            nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
+
+            // Integration Module Tests
+            for (int i=1; i<(integration_modules_chunks+1); i++) {
+                def chunk_no = i
+                def stagename = "Integration Modules #${chunk_no}" as String
+                def env_array = [
+                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
+                ] as String[]
+                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+            }
+
+            // Integration State Tests
+            for (int i=1; i<(integration_states_chunks+1); i++) {
+                def chunk_no = i
+                def stagename = "Integration States #${chunk_no}"
+                def env_array = [
+                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_states_chunks --test-group=$chunk_no tests/integration/states"
+                ] as String[]
+                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+            }
+
+            // Unit Tests
+            for (int i=1; i<(unit_chunks+1); i++) {
+                def chunk_no = i
+                def stagename = "Unit #${chunk_no}"
+                def env_array = [
+                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$unit_chunks --test-group=$chunk_no tests/unit"
+                ] as String[]
+                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+            }
+
+            // All Other
+            for (int i=1; i<(other_chunks+1); i++) {
+                def chunk_no = i
+                def stagename = "All Other #${chunk_no}"
+                def env_array = [
+                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$other_chunks --test-group=$chunk_no --ignore=tests/integration/modules --ignore=tests/integration/states --ignore=tests/unit"
+                ] as String[]
+                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+            }
+
+            // Finally run chunks in parallel
             parallel chunks
         }
 
