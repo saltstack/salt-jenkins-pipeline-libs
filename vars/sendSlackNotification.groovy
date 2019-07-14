@@ -1,5 +1,4 @@
 
-@NonCPS
 def call(String channel = null) {
     def color_code
     def build_status
