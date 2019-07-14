@@ -13,5 +13,6 @@ def call(Closure body=null) {
         echo "Setting currentBuild.result to ${currentBuild.result}"
         throw e
     }
+    sendSlackNotification()
 }
 // vim: ft=groovy ts=4 sts=4 et

@@ -16,7 +16,6 @@ def call(String node_name,
                             try {
                                 if (body) { body() }
                             } finally {
-                                sendSlackNotification()
                                 cleanWs notFailBuild: true
                             }
                         //}
