@@ -21,7 +21,7 @@ def call(String node_name,
         def stagename = "Integration Modules #${chunk_no}" as String
         def env_array = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
-        ]
+        ] as String[]
         chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
     }
 
@@ -31,7 +31,7 @@ def call(String node_name,
         def stagename = "Integration States #${chunk_no}"
         def env_array = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_states_chunks --test-group=$chunk_no tests/integration/states"
-        ]
+        ] as String[]
         chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
     }
 
@@ -41,7 +41,7 @@ def call(String node_name,
         def stagename = "Unit #${chunk_no}"
         def env_array = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$unit_chunks --test-group=$chunk_no tests/unit"
-        ]
+        ] as String[]
         chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
     }
 
@@ -51,7 +51,7 @@ def call(String node_name,
         def stagename = "All Other #${chunk_no}"
         def env_array = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$other_chunks --test-group=$chunk_no --ignore=tests/integration/modules --ignore=tests/integration/states --ignore=tests/unit"
-        ]
+        ] as String[]
         chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
     }
 
@@ -79,7 +79,7 @@ def call(String node_name,
             runTests(
                 checkout_directory,
                 'Full Test Suite',
-                ["NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} tests/"],
+                ["NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} tests/"] as String[],
                 serial_testrun_timeout
             )
         }
