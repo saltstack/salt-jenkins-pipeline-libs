@@ -5,11 +5,11 @@ def call(String node_name,
          Integer build_timeout,
          Closure body = null) {
 
-    withSetBuildResult() {
-        withSetGithubCommitContext(display_name, gh_commit_status_context, gh_commit_status_account) {
-            node(node_name) {
-                timeout(time: build_timeout, unit: 'HOURS') {
-                    ansiColor('xterm') {
+    ansiColor('xterm') {
+        withSetBuildResult() {
+            withSetGithubCommitContext(display_name, gh_commit_status_context, gh_commit_status_account) {
+                node(node_name) {
+                    timeout(time: build_timeout, unit: 'HOURS') {
                         // Because we set that all pipelines will have timestamps in the Jenkins Main config,
                         // we comment out the timestamps closure bellow
                         // timestamps {
