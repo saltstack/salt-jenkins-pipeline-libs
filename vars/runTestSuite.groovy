@@ -14,7 +14,7 @@ def call(String node_name,
          String timeout_unit = 'HOURS') {
 
     def chunks = [:]
-    def nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
+    nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
 
     // Integration Module Tests
     for (int i=1; i<(integration_modules_chunks+1); i++) {
