@@ -11,14 +11,16 @@ def call(String node_name,
             node(node_name) {
                 timeout(time: build_timeout, unit: timeout_unit) {
                     ansiColor('xterm') {
-                        timestamps {
+                        // Because we set that all pipelines will have timestamps in the Jenkins Main config,
+                        // we comment out the timestamps closure bellow
+                        // timestamps {
                             try {
                                 if (body) { body() }
                             } finally {
                                 sendSlackNotification(display_name)
                                 cleanWs notFailBuild: true
                             }
-                        }
+                        //}
                     }
                 }
             }
