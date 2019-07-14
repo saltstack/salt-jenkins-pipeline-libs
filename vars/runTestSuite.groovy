@@ -40,7 +40,9 @@ def call(String node_name,
                 def env_array = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
                 ]
-                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                chunks[stagename] = {
+                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                }
             }
 
             // Integration State Tests
@@ -50,7 +52,9 @@ def call(String node_name,
                 def env_array = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_states_chunks --test-group=$chunk_no tests/integration/states"
                 ]
-                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                chunks[stagename] = {
+                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                }
             }
 
             // Unit Tests
@@ -60,7 +64,9 @@ def call(String node_name,
                 def env_array = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$unit_chunks --test-group=$chunk_no tests/unit"
                 ]
-                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                chunks[stagename] = {
+                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                }
             }
 
             // All Other
@@ -70,7 +76,9 @@ def call(String node_name,
                 def env_array = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$other_chunks --test-group=$chunk_no --ignore=tests/integration/modules --ignore=tests/integration/states --ignore=tests/unit"
                 ]
-                chunks[stagename] = runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                chunks[stagename] = {
+                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
+                }
             }
 
             // Finally run chunks in parallel
