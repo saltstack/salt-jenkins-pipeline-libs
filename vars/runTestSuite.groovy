@@ -10,7 +10,8 @@ def call(String node_name,
          String gh_commit_status_account,
          Integer parallel_testrun_timeout,
          Integer serial_testrun_timeout,
-         Integer build_timeout) {
+         Integer build_timeout,
+         Boolean run_serial_build = true) {
 
     wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout) {
 
@@ -85,13 +86,15 @@ def call(String node_name,
             parallel chunks
         }
 
-        stage('Serial Test Run') {
-            runTests(
-                checkout_directory,
-                'Full Test Suite',
-                ["NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} tests/"],
-                serial_testrun_timeout
-            )
+        if (run_serial_build) {
+            stage('Serial Test Run') {
+                runTests(
+                    checkout_directory,
+                    'Full Test Suite',
+                    ["NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} tests/"],
+                    serial_testrun_timeout
+                )
+            }
         }
 
     }
