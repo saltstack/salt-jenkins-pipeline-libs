@@ -1,7 +1,7 @@
 def call(String node_name,
          String display_name,
          String checkout_directory,
-         String nox_passthrough_opts = '',
+         String nox_passthrough_opts,
          Integer integration_modules_chunks,
          Integer integration_states_chunks,
          Integer unit_chunks,
