@@ -1,8 +1,7 @@
 def call(String checkout_directory,
          String stage_name,
          String[] env_array,
-         Integer chunk_timeout,
-         String timeout_unit = 'HOURS') {
+         Integer chunk_timeout) {
 
     def stage_slug = stage_name.replace('#', '').replace(' ', '-').toLowerCase()
     def checkout_dir = "${checkout_directory}-${stage_slug}"
@@ -21,7 +20,7 @@ def call(String checkout_directory,
                 sshagent(credentials: ['jenkins-testing-ssh-key']) {
                     sh 'ssh-add ~/.ssh/kitchen.pem'
                     try {
-                        timeout(time: chunk_timeout, unit: timeout_unit) {
+                        timeout(time: chunk_timeout, unit: 'HOURS') {
                             stage('Converge VM') {
                                 sh 'bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";'
                             }

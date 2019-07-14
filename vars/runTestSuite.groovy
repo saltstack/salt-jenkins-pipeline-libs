@@ -10,8 +10,7 @@ def call(String node_name,
          String gh_commit_status_account,
          Integer parallel_testrun_timeout,
          Integer serial_testrun_timeout,
-         Integer testsuite_timeout,
-         String timeout_unit = 'HOURS') {
+         Integer testsuite_timeout) {
 
     def chunks = [:]
     nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
@@ -19,7 +18,7 @@ def call(String node_name,
     // Integration Module Tests
     for (int i=1; i<(integration_modules_chunks+1); i++) {
         def chunk_no = i
-        def stagename = "Integration Modules #${chunk_no}"
+        def stagename = "Integration Modules #${chunk_no}" as String
         def env_array = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
         ]
