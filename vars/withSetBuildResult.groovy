@@ -1,5 +1,5 @@
 
-def call(Closure body=null) {
+def call(String slack_channel = null, Closure body=null) {
     try {
         if (body) { body() }
         currentBuild.result = 'SUCCESS'
@@ -13,7 +13,7 @@ def call(Closure body=null) {
         echo "Setting currentBuild.result to ${currentBuild.result}"
         throw e
     } finally {
-        sendSlackNotification()
+        sendSlackNotification(slack_channel)
     }
 }
 // vim: ft=groovy ts=4 sts=4 et

@@ -11,9 +11,10 @@ def call(String node_name,
          Integer parallel_testrun_timeout,
          Integer serial_testrun_timeout,
          Integer build_timeout,
+         String slack_channel = null,
          Boolean run_serial_build = true) {
 
-    wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout) {
+    wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout, slack_channel) {
 
         dir(checkout_directory) {
             // Checkout the repo
