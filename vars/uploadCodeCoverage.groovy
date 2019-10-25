@@ -3,9 +3,9 @@ def call(Map options) {
     def String report_path = options.get('report_path')
     def String report_name = options.get('report_name')
     def String[] report_flags = options.get('report_flags')
-    def Integer upload_retries = optional.get('upload_retries', 3)
-    def String credentials_id = optional.get('credentials_id', 'codecov-upload-token-salt')
-    def String credentials_variable_name = optional.get('credentials_variable_name', 'CODECOV_TOKEN')
+    def Integer upload_retries = options.get('upload_retries', 3)
+    def String credentials_id = options.get('credentials_id', 'codecov-upload-token-salt')
+    def String credentials_variable_name = options.get('credentials_variable_name', 'CODECOV_TOKEN')
 
     withEnv([
         "REPORT_PATH=${report_path}",
@@ -15,7 +15,7 @@ def call(Map options) {
         try {
             retry(upload_retries) {
                 script {
-                    withCredentials([[$class: 'StringBinding', credentials_id: credentialsId, variable: credentials_variable_name]]) {
+                    withCredentials([[$class: 'StringBinding', credentialsId: credentials_id, variable: credentials_variable_name]]) {
                         sh '''
                         curl -L https://codecov.io/bash | /bin/sh -s -- -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}"
                         '''
