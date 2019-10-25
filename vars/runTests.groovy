@@ -6,15 +6,17 @@ def call(String distro_name,
          String nox_env_name,
          String nox_passthrough_opts,
          Integer testrun_timeout,
-         Boolean run_full = true,
-         Boolean macos_build = false,
-         Boolean use_spot_instances = false,
-         String rbenv_version = '2.6.3',
-         String jenkins_slave_label = 'kitchen-slave',
-         String notify_slack_channel = '#jenkins-prod-pr',
-         String kitchen_driver_file = '/var/jenkins/workspace/driver.yml',
-         String kitchen_verifier_file = '/var/jenkins/workspace/nox-verifier.yml',
-         String kitchen_platforms_file = '/var/jenkins/workspace/nox-platforms.yml') {
+         Map optional) {
+
+    def Boolean run_full = optional.get('run_full', true)
+    def Boolean macos_build = optional.get('macos_build', false)
+    def Boolean use_spot_instances = optional.get('use_spot_instances', false)
+    def String rbenv_version = optional.get('rbenv_version', '2.6.3')
+    def String jenkins_slave_label = optional.get('jenkins_slave_label', 'kitchen-slave')
+    def String notify_slack_channel = optional.get('notify_slack_channel', '#jenkins-prod-pr')
+    def String kitchen_driver_file = optional.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    def String kitchen_verifier_file = optional.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
+    def String kitchen_platforms_file = optional.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
@@ -32,6 +34,7 @@ def call(String distro_name,
     echo "Use SPOT instances: ${use_spot_instances}"
     echo "Jenkins Slave Label: ${jenkins_slave_label}"
     echo "Noxtify Slack Channel: ${notify_slack_channel}"
+    echo "Kitchen Driver File: ${kitchen_driver_file}"
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
         withEnv([
