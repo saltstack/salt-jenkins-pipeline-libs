@@ -22,19 +22,26 @@ def call(Map options) {
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
 
-    echo "Distro: ${distro_name}"
-    echo "Distro Version: ${distro_version}"
-    echo "Python Version: ${python_version}"
-    echo "Salt Target Branch: ${salt_target_branch}"
-    echo "Golden Images Branch: ${golden_images_branch}"
-    echo "Nox Env Name: ${nox_env_name}"
-    echo "Nox Passthrough Opts: ${nox_passthrough_opts}"
-    echo "Test run timeout: ${testrun_timeout} Hours"
-    echo "Global Timeout: ${global_timeout} Hours"
-    echo "Use SPOT instances: ${use_spot_instances}"
-    echo "Jenkins Slave Label: ${jenkins_slave_label}"
-    echo "Noxtify Slack Channel: ${notify_slack_channel}"
-    echo "Kitchen Driver File: ${kitchen_driver_file}"
+    echo """
+    Distro: ${distro_name}
+    Distro Version: ${distro_version}
+    Python Version: ${python_version}
+    Salt Target Branch: ${salt_target_branch}
+    Golden Images Branch: ${golden_images_branch}
+    Nox Env Name: ${nox_env_name}
+    Nox Passthrough Opts: ${nox_passthrough_opts}
+    Test run timeout: ${testrun_timeout} Hours
+    Global Timeout: ${global_timeout} Hours
+    Full Testsuite Run: ${run_full}
+    Mac OS Build: ${macos_build}
+    Use SPOT instances: ${use_spot_instances}
+    RBEnv Version: ${rbenv_version}
+    Jenkins Slave Label: ${jenkins_slave_label}
+    Notify Slack Channel: ${notify_slack_channel}
+    Kitchen Driver File: ${kitchen_driver_file}
+    Kitchen Verifier File: ${kitchen_verifier_file}
+    Kitchen Platforms File: ${kitchen_platforms_file}
+    """
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
         withEnv([
