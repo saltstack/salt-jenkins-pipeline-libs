@@ -20,6 +20,19 @@ def call(String distro_name,
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
 
+    echo "Distro: ${distro_name}"
+    echo "Distro Version: ${distro_version}"
+    echo "Python Version: ${python_version}"
+    echo "Salt Target Branch: ${salt_target_branch}"
+    echo "Golden Images Branch: ${golden_images_branch}"
+    echo "Nox Env Name: ${nox_env_name}"
+    echo "Nox Passthrough Opts: ${nox_passthrough_opts}"
+    echo "Test run timeout: ${testrun_timeout} Hours"
+    echo "Global Timeout: ${global_timeout} Hours"
+    echo "Use SPOT instances: ${use_spot_instances}"
+    echo "Jenkins Slave Label: ${jenkins_slave_label}"
+    echo "Noxtify Slack Channel: ${notify_slack_channel}"
+
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
         withEnv([
             "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
