@@ -1,10 +1,12 @@
 
-def uploadCodeCoverage(String coverage_file_path,
-                       String coverage_report_name,
-                       String[] coverage_report_flags,
-                       Integer upload_retries = 3,
-                       String credentials_id = 'codecov-upload-token-salt',
-                       String credentials_variable_name = 'CODECOV_TOKEN') {
+def uploadCodeCoverage(Map options) {
+
+    def String coverage_file_path = options.get('coverage_file_path')
+    def String coverage_report_name = options.get('coverage_report_name')
+    def String[] coverage_report_flags = options.get('coverage_report_flags')
+    def Integer upload_retries = optional.get('upload_retries', 3)
+    def String credentials_id = optional.get('credentials_id', 'codecov-upload-token-salt')
+    def String credentials_variable_name = optional.get('credentials_variable_name', 'CODECOV_TOKEN')
 
     withEnv([
         "REPORT_FILE=${coverage_file_path}",

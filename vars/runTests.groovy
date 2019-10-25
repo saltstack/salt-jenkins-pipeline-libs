@@ -204,9 +204,9 @@ def call(Map options) {
                     stage('Upload Coverage') {
                         if ( run_full ) {
                             uploadCodeCoverage(
-                                'artifacts/coverage/salt.xml',
-                                "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-salt",
-                                (
+                                coverage_file_path: 'artifacts/coverage/salt.xml',
+                                coverage_report_name: "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-salt",
+                                coverage_report_flags: (
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
@@ -216,9 +216,9 @@ def call(Map options) {
                                 ).flatten()
                             )
                             uploadCodeCoverage(
-                                'artifacts/coverage/tests.xml',
-                                "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-tests",
-                                (
+                                coverage_file_path: 'artifacts/coverage/tests.xml',
+                                coverage_report_name: "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-tests",
+                                coverage_report_flags: (
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
