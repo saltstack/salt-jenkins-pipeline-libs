@@ -210,7 +210,7 @@ def call(Map options) {
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
-                                    ] + nox_env_name.split(',') + [
+                                    ] + nox_env_name.split('-') + [
                                         'salt'
                                     ]
                                 ).flatten()
@@ -222,7 +222,7 @@ def call(Map options) {
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
-                                    ] + nox_env_name.split(',') + [
+                                    ] + nox_env_name.split('-') + [
                                         'tests'
                                     ]
                                 ).flatten()
