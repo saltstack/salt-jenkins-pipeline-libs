@@ -1,22 +1,22 @@
-def call(String distro_name,
-         String distro_version,
-         String python_version,
-         String salt_target_branch,
-         String golden_images_branch,
-         String nox_env_name,
-         String nox_passthrough_opts,
-         Integer testrun_timeout,
-         Map optional) {
+def call(Map options) {
 
-    def Boolean run_full = optional.get('run_full', true)
-    def Boolean macos_build = optional.get('macos_build', false)
-    def Boolean use_spot_instances = optional.get('use_spot_instances', false)
-    def String rbenv_version = optional.get('rbenv_version', '2.6.3')
-    def String jenkins_slave_label = optional.get('jenkins_slave_label', 'kitchen-slave')
-    def String notify_slack_channel = optional.get('notify_slack_channel', '#jenkins-prod-pr')
-    def String kitchen_driver_file = optional.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
-    def String kitchen_verifier_file = optional.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
-    def String kitchen_platforms_file = optional.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
+    def String distro_name = options.get('distro_name')
+    def String distro_version = options.get('distro_version')
+    def String python_version = options.get('python_version')
+    def String salt_target_branch = options.get('salt_target_branch')
+    def String golden_images_branch = options.get('golden_images_branch')
+    def String nox_env_name = options.get('nox_env_name')
+    def String nox_passthrough_opts = options.get('nox_passthrough_opts')
+    def Integer testrun_timeout = options.get('testrun_timeout')
+    def Boolean run_full = options.get('run_full', true)
+    def Boolean macos_build = options.get('macos_build', false)
+    def Boolean use_spot_instances = options.get('use_spot_instances', false)
+    def String rbenv_version = options.get('rbenv_version', '2.6.3')
+    def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
+    def String notify_slack_channel = options.get('notify_slack_channel', '#jenkins-prod-pr')
+    def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
+    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
