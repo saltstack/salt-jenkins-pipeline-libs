@@ -1,18 +1,29 @@
+def call(Map options) {
 
-def call(String credentials_id = 'codecov-upload-token-salt') {
-    stage('Upload Coverage') {
-        retry(3) {
-            timeout(time: 5, unit: 'MINUTES') {
+    def String report_path = options.get('report_path')
+    def String report_name = options.get('report_name')
+    def String[] report_flags = options.get('report_flags')
+    def Integer upload_retries = optional.get('upload_retries', 3)
+    def String credentials_id = optional.get('credentials_id', 'codecov-upload-token-salt')
+    def String credentials_variable_name = optional.get('credentials_variable_name', 'CODECOV_TOKEN')
+
+    withEnv([
+        "REPORT_PATH=${report_path}",
+        "REPORT_NAME=${report_name}",
+        "REPORT_FLAGS=${report_flags.join(',')}"
+    ]) {
+        try {
+            retry(upload_retries) {
                 script {
-                    withCredentials([[$class: 'StringBinding', credentialsId: 'codecov-upload-token-salt', variable: 'CODECOV_TOKEN']]) {
+                    withCredentials([[$class: 'StringBinding', credentials_id: credentialsId, variable: credentials_variable_name]]) {
                         sh '''
-                        if [ -f artifacts/coverage/coverage.xml ]; then
-                            curl -L https://codecov.io/bash | /bin/sh -s -- -R $(pwd) -s artifacts/coverage/ -F "${CODECOV_FLAGS}"
-                        fi
+                        curl -L https://codecov.io/bash | /bin/sh -s -- -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}"
                         '''
                     }
                 }
             }
+        } catch (Exception e) {
+            echo "Failed to upload to codecov after ${upload_retries}: ${e}"
         }
     }
 }
