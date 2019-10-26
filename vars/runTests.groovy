@@ -17,6 +17,7 @@ def call(Map options) {
     def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
+    def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
@@ -210,7 +211,7 @@ def call(Map options) {
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
-                                    ] + nox_env_name.split('-') + [
+                                    ] + nox_env_name.split('-') + extra_codecov_flags + [
                                         'salt'
                                     ]
                                 ).flatten()
@@ -222,7 +223,7 @@ def call(Map options) {
                                     [
                                         "${distro_name}${distro_version}",
                                         python_version,
-                                    ] + nox_env_name.split('-') + [
+                                    ] + nox_env_name.split('-') + extra_codecov_flags + [
                                         'tests'
                                     ]
                                 ).flatten()
