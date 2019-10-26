@@ -240,29 +240,22 @@ def call(Map options) {
                     }
                     stage('Upload Coverage') {
                         if ( run_full ) {
+                            def distro_strings = [
+                                distro_name,
+                                distro_version
+                            ]
+                            def report_strings = (
+                                [python_version] + nox_env_name.split('-') + extra_codecov_flags
+                            ).flatten()
                             uploadCodeCoverage(
                                 report_path: 'artifacts/coverage/salt.xml',
-                                report_name: "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-salt",
-                                report_flags: (
-                                    [
-                                        "${distro_name}${distro_version}",
-                                        python_version,
-                                    ] + nox_env_name.split('-') + extra_codecov_flags + [
-                                        'salt'
-                                    ]
-                                ).flatten()
+                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
                             )
                             uploadCodeCoverage(
                                 report_path: 'artifacts/coverage/tests.xml',
-                                report_name: "${distro_name}-${distro_version}-${python_version}-${nox_env_name.toLowerCase()}-tests",
-                                report_flags: (
-                                    [
-                                        "${distro_name}${distro_version}",
-                                        python_version,
-                                    ] + nox_env_name.split('-') + extra_codecov_flags + [
-                                        'tests'
-                                    ]
-                                ).flatten()
+                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
                             )
                         }
                     }
