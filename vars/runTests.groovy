@@ -18,12 +18,15 @@ def call(Map options) {
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
+    def String vm_hostname_suffix = options.get('vm_hostname_suffix', '')
 
 
     def String machine_hostname = (
         [
             distro_name, distro_version, salt_target_branch, python_version
-        ] + nox_env_name.split('-') + extra_codecov_flags
+        ] + nox_env_name.split('-') + extra_codecov_flags + [
+            vm_hostname_suffix
+        ]
     ).flatten().join('-').replace(
             'zeromq', 'zmq'
         ).replace(
