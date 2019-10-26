@@ -19,6 +19,40 @@ def call(Map options) {
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
 
+
+    def String machine_hostname = (
+        [
+            distro_name, distro_version, salt_target_branch, python_version
+        ] + nox_env_name.split('-') + extra_codecov_flags
+    ).flatten().join('-').replace(
+            'zeromq', 'zmq'
+        ).replace(
+            'runtests', 'rtst'
+        ).replace(
+            'pytest', 'ptst'
+        ).replace(
+            'ubuntu', 'ubtu'
+        ).replace(
+            'centos', 'cent'
+        ).replace(
+            'debian', 'deb'
+        ).replace(
+            'fedora', 'fed'
+        ).replace(
+            'windows', 'win'
+        ).replace(
+            'amazon', 'amzn'
+        ).replace(
+            'opensuse', 'osuse',
+        ).replace(
+            'm2crypto', 'm2c'
+        ).replace(
+            'pycryptodomex', 'pcrtodomex'
+        ).replace(
+            'tornado', 'trndo'
+        )
+
+
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
@@ -42,6 +76,7 @@ def call(Map options) {
     Kitchen Driver File: ${kitchen_driver_file}
     Kitchen Verifier File: ${kitchen_verifier_file}
     Kitchen Platforms File: ${kitchen_platforms_file}
+    Computed Machine Hostname: ${machine_hostname}
     """
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
@@ -60,6 +95,7 @@ def call(Map options) {
             "TEST_SUITE=${python_version}",
             "TEST_PLATFORM=${distro_name}-${distro_version}",
             "FORCE_FULL=${run_full}",
+            "TEST_MACHINE_HOSTNAME=${machine_hostname}"
         ]) {
 
             if ( macos_build ) {
