@@ -6,6 +6,7 @@ def call(Map opts) {
     def String python_version = opts.get('python_version')
     def String nox_env_name = opts.get('nox_env_name')
     def String[] extra_parts = opts.get('extra_parts', [])
+    def Boolean retrying = opts.get('retrying', false)
 
     def hostname_parts = [distro_name, distro_version]
 
@@ -20,6 +21,9 @@ def call(Map opts) {
     hostname_parts << nox_env_name.split('-')
     hostname_parts << extra_parts
     hostname_parts << "${env.BUILD_NUMBER}"
+    if ( retrying == true ) {
+        hostname_parts << "rt"
+    }
 
     def String machine_hostname = hostname_parts.flatten().join('-')
 

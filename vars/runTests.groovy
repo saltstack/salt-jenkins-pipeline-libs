@@ -19,13 +19,15 @@ def call(Map options) {
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
+    def Boolean retrying = options.get('retrying', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
         distro_version: distro_version,
         python_version: python_version,
         nox_env_name: nox_env_name,
-        extra_parts: extra_codecov_flags
+        extra_parts: extra_codecov_flags,
+        retrying: retrying
     )
 
     def Boolean retry_build = null
