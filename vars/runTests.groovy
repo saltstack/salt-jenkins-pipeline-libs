@@ -1,5 +1,6 @@
 def call(Map options) {
 
+    def env = options.get('env')
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
     def String python_version = options.get('python_version')
@@ -18,42 +19,14 @@ def call(Map options) {
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
-    def String vm_hostname_suffix = options.get('vm_hostname_suffix', '')
-
-
-    def String machine_hostname = (
-        [
-            distro_name, distro_version, salt_target_branch, python_version
-        ] + nox_env_name.split('-') + extra_codecov_flags + [
-            vm_hostname_suffix
-        ]
-    ).flatten().join('-').replace(
-            'zeromq', 'zmq'
-        ).replace(
-            'runtests', 'rtst'
-        ).replace(
-            'pytest', 'ptst'
-        ).replace(
-            'ubuntu', 'ubtu'
-        ).replace(
-            'centos', 'cent'
-        ).replace(
-            'debian', 'deb'
-        ).replace(
-            'fedora', 'fed'
-        ).replace(
-            'windows', 'win'
-        ).replace(
-            'amazon', 'amzn'
-        ).replace(
-            'opensuse', 'osuse',
-        ).replace(
-            'm2crypto', 'm2c'
-        ).replace(
-            'pycryptodomex', 'pcrtodomex'
-        ).replace(
-            'tornado', 'trndo'
-        )
+    def String vm_hostname = computeMachineHostname(
+        env: env,
+        distro_name: distro_name,
+        distro_version: distro_version,
+        python_version: python_version,
+        nox_env_name: nox_env_name,
+        extra_parts: extra_codecov_flags
+    )
 
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
@@ -79,7 +52,7 @@ def call(Map options) {
     Kitchen Driver File: ${kitchen_driver_file}
     Kitchen Verifier File: ${kitchen_verifier_file}
     Kitchen Platforms File: ${kitchen_platforms_file}
-    Computed Machine Hostname: ${machine_hostname}
+    Computed Machine Hostname: ${vm_hostname}
     """
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
@@ -98,7 +71,7 @@ def call(Map options) {
             "TEST_SUITE=${python_version}",
             "TEST_PLATFORM=${distro_name}-${distro_version}",
             "FORCE_FULL=${run_full}",
-            "TEST_MACHINE_HOSTNAME=${machine_hostname}"
+            "TEST_VM_HOSTNAME=${vm_hostname}"
         ]) {
 
             if ( macos_build ) {
