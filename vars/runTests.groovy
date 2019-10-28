@@ -28,6 +28,8 @@ def call(Map options) {
         extra_parts: extra_codecov_flags
     )
 
+    def Boolean retry_build = null
+
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
@@ -188,6 +190,22 @@ def call(Map options) {
                         mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-verify.log"
                     fi
                     """
+
+                    // Let's see if we got an ssh timeout
+                    def has_ssh_timeout_string = sh(
+                        returnStatus: true,
+                        script: '''
+                        grep -q 'Connection timed out - recvfrom' .kitchen/logs/kitchen-verify.log
+                        '''
+                    )
+                    if ( has_ssh_timeout_string == 0 ) {
+                        println "Signalling Build Retry since SSH timeout was detected"
+                        retry_build = true
+                    } else {
+                        println "NOT Signalling Build Retry since SSH timeout was NOT detected"
+                        retry_build = false
+                    }
+
                     stage('Download Artefacts') {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
                             sh '''
@@ -239,5 +257,7 @@ def call(Map options) {
             }
         }
     }
+
+    return retry_build
 }
 // vim: ft=groovy ts=4 sts=4 et
