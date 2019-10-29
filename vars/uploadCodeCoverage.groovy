@@ -25,7 +25,13 @@ def call(Map options) {
                 }
             }
         } catch (Exception e) {
-            echo "Failed to upload to codecov after ${upload_retries}: ${e}"
+            error_message = "Failed to upload '${report_path}' to codecov.io after ${upload_retries}: ${e}"
+            echo error_message
+            createSummary(
+                id: "coverage-upload-${report_path.replace('/', '-')}",
+                icon: 'warning.png',
+                text: error_message
+            )
         }
     }
 }
