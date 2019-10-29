@@ -236,14 +236,18 @@ def call(Map options) {
                                 [python_version] + nox_env_name.split('-') + extra_codecov_flags
                             ).flatten()
                             uploadCodeCoverage(
-                                report_path: 'artifacts/coverage/salt.xml',
-                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                            )
-                            uploadCodeCoverage(
                                 report_path: 'artifacts/coverage/tests.xml',
                                 report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
                                 report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                            )
+                            sleep(
+                                time: 5,
+                                unit: 'SECONDS'
+                            )
+                            uploadCodeCoverage(
+                                report_path: 'artifacts/coverage/salt.xml',
+                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
                             )
                         }
                     }
