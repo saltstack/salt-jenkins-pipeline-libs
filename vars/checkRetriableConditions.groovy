@@ -1,7 +1,6 @@
 
 def call(String filename) {
 
-    def summary
     def Boolean retry_condition_found = false
 
     // Let's check for SSH Timeouts
@@ -12,17 +11,15 @@ def call(String filename) {
         grep -q 'Connection timed out - recvfrom' ${filename}
         """
     )
+
     if ( ssh_timeout_check_rc == 0 ) {
         // The match succeeded
         retry_condition_found = true
-        if ( ! summary ) {
-            summary = createSummary(
-                id: 'build-retry-warning',
-                icon: 'warning.png',
-                text: 'Retrying Build:'
-            )
-        }
-        summary.appendText('SSH Timeout Detected')
+        createSummary(
+            id: 'ssh-timeout-warning',
+            icon: 'warning.png',
+            text: 'SSH Timeout Detected'
+        )
     }
 
     return retry_condition_found
