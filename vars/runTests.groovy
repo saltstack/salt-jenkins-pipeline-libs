@@ -11,11 +11,15 @@ def call(Map options) {
         options.remove(retry_failed_builds)
     }
 
+    if ( retry_failed_builds == true ) {
+        echo "Retrying failed builds on particular conditions"
+    }
+
     // Let's explicitly state that we're not currently retrying
     options['retrying'] = false
     def Boolean retry_build = runTestSuite(options)
 
-    if ( retry_failed_builds && retry_build ) {
+    if ( retry_failed_builds == true && retry_build == true ) {
         // runTestSuite flagged the build to retry, let's retry
         options['retrying'] = true
         runTestSuite(options)
