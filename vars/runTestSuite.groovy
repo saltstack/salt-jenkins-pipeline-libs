@@ -1,22 +1,100 @@
-def call(String node_name,
-         String display_name,
-         String checkout_directory,
-         String nox_passthrough_opts,
-         Integer integration_modules_chunks,
-         Integer integration_states_chunks,
-         Integer unit_chunks,
-         Integer other_chunks,
-         String gh_commit_status_context,
-         String gh_commit_status_account,
-         Integer parallel_testrun_timeout,
-         Integer serial_testrun_timeout,
-         Integer build_timeout,
-         String slack_channel = null,
-         Boolean run_serial_build = true) {
+def call(Map options) {
 
-    wrappedNode(node_name, gh_commit_status_context, gh_commit_status_account, display_name, build_timeout, slack_channel) {
+    def env = options.get('env')
+    def String distro_name = options.get('distro_name')
+    def String distro_version = options.get('distro_version')
+    def String python_version = options.get('python_version')
+    def String salt_target_branch = options.get('salt_target_branch')
+    def String golden_images_branch = options.get('golden_images_branch')
+    def String nox_env_name = options.get('nox_env_name')
+    def String nox_passthrough_opts = options.get('nox_passthrough_opts')
+    def Integer testrun_timeout = options.get('testrun_timeout')
+    def Boolean run_full = options.get('run_full', true)
+    def Boolean macos_build = options.get('macos_build', false)
+    def Boolean use_spot_instances = options.get('use_spot_instances', false)
+    def String rbenv_version = options.get('rbenv_version', '2.6.3')
+    def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
+    def String notify_slack_channel = options.get('notify_slack_channel', '#jenkins-prod-pr')
+    def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
+    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
+    def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
+    def Boolean retrying = options.get('retrying', false)
+    def String vm_hostname = computeMachineHostname(
+        env: env,
+        distro_name: distro_name,
+        distro_version: distro_version,
+        python_version: python_version,
+        nox_env_name: nox_env_name,
+        extra_parts: extra_codecov_flags,
+        retrying: retrying
+    )
 
-        dir(checkout_directory) {
+    def Boolean retry_build = false
+
+
+    // Define a global pipeline timeout. This is the test run timeout with one(1) additional
+    // hour to allow for artifacts to be downloaded, if possible.
+    def global_timeout = testrun_timeout + 1
+
+    echo """
+    Distro: ${distro_name}
+    Distro Version: ${distro_version}
+    Python Version: ${python_version}
+    Salt Target Branch: ${salt_target_branch}
+    Golden Images Branch: ${golden_images_branch}
+    Nox Env Name: ${nox_env_name}
+    Nox Passthrough Opts: ${nox_passthrough_opts}
+    Test run timeout: ${testrun_timeout} Hours
+    Global Timeout: ${global_timeout} Hours
+    Full Testsuite Run: ${run_full}
+    Mac OS Build: ${macos_build}
+    Use SPOT instances: ${use_spot_instances}
+    RBEnv Version: ${rbenv_version}
+    Jenkins Slave Label: ${jenkins_slave_label}
+    Notify Slack Channel: ${notify_slack_channel}
+    Kitchen Driver File: ${kitchen_driver_file}
+    Kitchen Verifier File: ${kitchen_verifier_file}
+    Kitchen Platforms File: ${kitchen_platforms_file}
+    Computed Machine Hostname: ${vm_hostname}
+    """
+
+    wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
+        withEnv([
+            "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
+            "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
+            "SALT_KITCHEN_DRIVER=${kitchen_driver_file}",
+            "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
+            'NOX_ENABLE_FROM_FILENAMES=true',
+            "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
+            "SALT_TARGET_BRANCH=${salt_target_branch}",
+            "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
+            "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
+            'PATH=~/.rbenv/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin',
+            "RBENV_VERSION=${rbenv_version}",
+            "TEST_SUITE=${python_version}",
+            "TEST_PLATFORM=${distro_name}-${distro_version}",
+            "FORCE_FULL=${run_full}",
+            "TEST_VM_HOSTNAME=${vm_hostname}"
+        ]) {
+
+            if ( macos_build ) {
+                // Cleanup old VMs
+                stage('VM Cleanup') {
+                    sh '''
+                    for i in `prlctl list -aij|jq -r '.[]|select((.Uptime|tonumber > 86400) and (.State == "running"))|.ID'`
+                    do
+                        prlctl stop $i --kill
+                    done
+                    # don't delete vm's that haven't started yet ((.State == "stopped") and (.Uptime == "0"))
+                    for i in `prlctl list -aij|jq -r '.[]|select((.Uptime|tonumber > 0) and (.State != "running"))|.ID'`
+                    do
+                        prlctl delete $i
+                    done
+                    '''
+                }
+            }
+
             // Checkout the repo
             stage('Clone') {
                 cleanWs notFailBuild: true
@@ -26,79 +104,152 @@ def call(String node_name,
 
             // Setup the kitchen required bundle
             stage('Setup') {
-                sh 'bundle install --with ec2 windows --without docker macos opennebula vagrant'
+                if ( macos_build ) {
+                    sh 'bundle install --with vagrant macos --without ec2 windows opennebula docker'
+                } else {
+                    sh 'bundle install --with ec2 windows --without docker macos opennebula vagrant'
+                }
+            }
+
+            stage('Create VM') {
+                if ( macos_build ) {
+                    sh '''
+                    bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
+                    '''
+                    sh """
+                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-create.log"
+                    fi
+                    if [ -s ".kitchen/logs/kitchen.log" ]; then
+                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-create.log"
+                    fi
+                    """
+                } else {
+                    retry(3) {
+                        if ( use_spot_instances ) {
+                            sh '''
+                            cp -f ~/workspace/spot.yml .kitchen.local.yml
+                            t=$(shuf -i 30-120 -n 1); echo "Sleeping $t seconds"; sleep $t
+                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); echo "ExitCode: $?";
+                            rm -f .kitchen.local.yml
+                            '''
+                        } else {
+                            sh '''
+                            t=$(shuf -i 30-120 -n 1); echo "Sleeping $t seconds"; sleep $t
+                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
+                            '''
+                        }
+                        sh """
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-create.log"
+                        fi
+                        if [ -s ".kitchen/logs/kitchen.log" ]; then
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-create.log"
+                        fi
+                        """
+                    }
+                    sh '''
+                    bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:'
+                    bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'instance_type:' -A5
+                    '''
+                }
+            }
+
+            try {
+                timeout(time: testrun_timeout, unit: 'HOURS') {
+                    stage('Converge VM') {
+                        if ( macos_build ) {
+                            sh '''
+                            ssh-agent /bin/bash -c 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?"'
+                            '''
+                        } else {
+                            sh '''
+                            ssh-agent /bin/bash -c 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?"'
+                            '''
+                        }
+                        sh """
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-converge.log"
+                        fi
+                        if [ -s ".kitchen/logs/kitchen.log" ]; then
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-converge.log"
+                        fi
+                        """
+                    }
+                    stage('Run Tests') {
+                        withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";'
+                        }
+                    }
+                }
+            } finally {
+                try {
+                    sh """
+                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log"
+                    fi
+                    if [ -s ".kitchen/logs/kitchen.log" ]; then
+                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-verify.log"
+                    fi
+                    """
+
+                    if ( retrying == false ) {
+                        // Let's see if we should retry the build
+                        retry_build = checkRetriableConditions('.kitchen/logs/kitchen-verify.log')
+                    }
+
+                    stage('Download Artefacts') {
+                        withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
+                            sh '''
+                            bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0
+                            '''
+                        }
+                        sh """
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-download.log"
+                        fi
+                        if [ -s ".kitchen/logs/kitchen.log" ]; then
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-download.log"
+                        fi
+                        """
+                    }
+                    archiveArtifacts(
+                        artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
+                        allowEmptyArchive: true
+                    )
+                    junit 'artifacts/xml-unittests-output/*.xml'
+                } finally {
+                    stage('Cleanup') {
+                        sh '''
+                        bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
+                        '''
+                    }
+                    stage('Upload Coverage') {
+                        if ( run_full ) {
+                            def distro_strings = [
+                                distro_name,
+                                distro_version
+                            ]
+                            def report_strings = (
+                                [python_version] + nox_env_name.split('-') + extra_codecov_flags
+                            ).flatten()
+                            uploadCodeCoverage(
+                                report_path: 'artifacts/coverage/salt.xml',
+                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                            )
+                            uploadCodeCoverage(
+                                report_path: 'artifacts/coverage/tests.xml',
+                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                            )
+                        }
+                    }
+                }
             }
         }
-
-        stage('Parallel Test Run') {
-
-            def chunks = [:]
-            nox_passthrough_opts = "--log-cli-level=warning --ignore=tests/utils ${nox_passthrough_opts}".trim()
-
-            // Integration Module Tests
-            for (int i=1; i<(integration_modules_chunks+1); i++) {
-                def chunk_no = i
-                def stagename = "Integration Modules #${chunk_no}" as String
-                def env_array = [
-                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_modules_chunks --test-group=$chunk_no tests/integration/modules"
-                ]
-                chunks[stagename] = {
-                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-                }
-            }
-
-            // Integration State Tests
-            for (int i=1; i<(integration_states_chunks+1); i++) {
-                def chunk_no = i
-                def stagename = "Integration States #${chunk_no}"
-                def env_array = [
-                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$integration_states_chunks --test-group=$chunk_no tests/integration/states"
-                ]
-                chunks[stagename] = {
-                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-                }
-            }
-
-            // Unit Tests
-            for (int i=1; i<(unit_chunks+1); i++) {
-                def chunk_no = i
-                def stagename = "Unit #${chunk_no}"
-                def env_array = [
-                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$unit_chunks --test-group=$chunk_no tests/unit"
-                ]
-                chunks[stagename] = {
-                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-                }
-            }
-
-            // All Other
-            for (int i=1; i<(other_chunks+1); i++) {
-                def chunk_no = i
-                def stagename = "All Other #${chunk_no}"
-                def env_array = [
-                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --test-group-count=$other_chunks --test-group=$chunk_no --ignore=tests/integration/modules --ignore=tests/integration/states --ignore=tests/unit"
-                ]
-                chunks[stagename] = {
-                    runTests(checkout_directory, stagename, env_array, parallel_testrun_timeout)
-                }
-            }
-
-            // Finally run chunks in parallel
-            parallel chunks
-        }
-
-        if (run_serial_build) {
-            stage('Serial Test Run') {
-                runTests(
-                    checkout_directory,
-                    'Full Test Suite',
-                    ["NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} tests/"],
-                    serial_testrun_timeout
-                )
-            }
-        }
-
     }
 
+    return retry_build
 }
 // vim: ft=groovy ts=4 sts=4 et
