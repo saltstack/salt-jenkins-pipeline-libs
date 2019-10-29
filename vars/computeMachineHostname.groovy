@@ -22,7 +22,7 @@ def call(Map opts) {
     hostname_parts << extra_parts
     hostname_parts << "${env.BUILD_NUMBER}"
     if ( retrying == true ) {
-        hostname_parts << "rt"
+        hostname_parts << "rtr"
     }
 
     def String machine_hostname = hostname_parts.flatten().join('-')
@@ -30,9 +30,9 @@ def call(Map opts) {
     def Map replacements = [
         master: 'mst',
         zeromq: 'zmq',
-        runtests: 'rtst',
-        pytest: 'ptst',
-        ubuntu: 'ubtu',
+        runtests: 'rt',
+        pytest: 'pt',
+        ubuntu: 'ubt',
         centos: 'cent',
         debian: 'deb',
         fedora: 'fed',
@@ -40,7 +40,7 @@ def call(Map opts) {
         amazon: 'amzn',
         opensuse: 'osuse',
         m2crypto: 'm2c',
-        pycryptodomex: 'pcrtodomex',
+        pycryptodomex: 'pcdomex',
         tornado: 'trndo',
     ]
 
@@ -50,3 +50,5 @@ def call(Map opts) {
 
     return machine_hostname
 }
+
+// vim: ft=groovy ts=4 sts=4 et
