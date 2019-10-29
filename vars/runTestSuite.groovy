@@ -10,7 +10,6 @@ def call(Map options) {
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout')
     def Boolean run_full = options.get('run_full', true)
-    def Boolean macos_build = options.get('macos_build', false)
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
@@ -32,6 +31,10 @@ def call(Map options) {
 
     def Boolean retry_build = false
 
+    def Boolean macos_build = false
+    if ( distro_name == 'macosx' ) {
+        macos_build = true
+    }
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
@@ -48,7 +51,6 @@ def call(Map options) {
     Test run timeout: ${testrun_timeout} Hours
     Global Timeout: ${global_timeout} Hours
     Full Testsuite Run: ${run_full}
-    Mac OS Build: ${macos_build}
     Use SPOT instances: ${use_spot_instances}
     RBEnv Version: ${rbenv_version}
     Jenkins Slave Label: ${jenkins_slave_label}
