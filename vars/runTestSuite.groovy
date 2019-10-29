@@ -18,6 +18,7 @@ def call(Map options) {
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
+    def String ami_image_id = options.get('ami_image_id', '')
     def Boolean retrying = options.get('retrying', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
@@ -61,24 +62,30 @@ def call(Map options) {
     Computed Machine Hostname: ${vm_hostname}
     """
 
+    def environ = [
+        "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
+        "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
+        "SALT_KITCHEN_DRIVER=${kitchen_driver_file}",
+        "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
+        'NOX_ENABLE_FROM_FILENAMES=true',
+        "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
+        "SALT_TARGET_BRANCH=${salt_target_branch}",
+        "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
+        "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
+        'PATH=~/.rbenv/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin',
+        "RBENV_VERSION=${rbenv_version}",
+        "TEST_SUITE=${python_version}",
+        "TEST_PLATFORM=${distro_name}-${distro_version}",
+        "FORCE_FULL=${run_full}",
+        "TEST_VM_HOSTNAME=${vm_hostname}"
+    ]
+
+    if ( ami_image_id != '' ) {
+        environ << "AMI_IMAGE_ID=${ami_image_id}"
+    }
+
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
-        withEnv([
-            "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
-            "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
-            "SALT_KITCHEN_DRIVER=${kitchen_driver_file}",
-            "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
-            'NOX_ENABLE_FROM_FILENAMES=true',
-            "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-            "SALT_TARGET_BRANCH=${salt_target_branch}",
-            "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
-            "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
-            'PATH=~/.rbenv/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin',
-            "RBENV_VERSION=${rbenv_version}",
-            "TEST_SUITE=${python_version}",
-            "TEST_PLATFORM=${distro_name}-${distro_version}",
-            "FORCE_FULL=${run_full}",
-            "TEST_VM_HOSTNAME=${vm_hostname}"
-        ]) {
+        withEnv(environ) {
 
             if ( macos_build ) {
                 // Cleanup old VMs
