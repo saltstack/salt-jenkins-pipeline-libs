@@ -15,14 +15,21 @@ def call(Map options) {
         echo "Retrying failed builds on particular conditions"
     }
 
-    // Let's explicitly state that we're not currently retrying
-    options['retrying'] = false
-    def Boolean retry_build = runTestSuite(options)
-
-    if ( retry_failed_builds == true && retry_build == true ) {
-        // runTestSuite flagged the build to retry, let's retry
-        options['retrying'] = true
+    try {
+        // Let's explicitly state that we're not currently retrying
+        options['retrying'] = false
         runTestSuite(options)
+    } catch (Exception e) {
+        println "Exception caught: '${e}'"
+        if ( "${e}" == "retry-build" && retry_failed_builds == true ) {
+            // runTestSuite flagged the build to retry, let's retry
+            println '\n\nRETRYING BUILD\n\n'
+            currentBuild.result = 'NOT_BUILT'
+            options['retrying'] = true
+            runTestSuite(options)
+        } else {
+            throw e
+        }
     }
 }
 // vim: ft=groovy ts=4 sts=4 et

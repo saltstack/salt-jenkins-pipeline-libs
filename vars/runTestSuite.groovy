@@ -268,6 +268,9 @@ def call(Map options) {
         }
     }
 
-    return retry_build
+    if ( retrying == false && retry_build == true) {
+        throw new Exception('retry-build')
+    }
+
 }
 // vim: ft=groovy ts=4 sts=4 et
