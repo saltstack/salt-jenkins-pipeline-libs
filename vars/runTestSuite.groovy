@@ -204,12 +204,7 @@ def call(Map options) {
 
                     if ( retrying == false ) {
                         // Let's see if we should retry the build
-                        retry_build_1 = checkRetriableConditions('.kitchen/logs/kitchen-verify.log')
-                        retry_build_2 = checkRetriableConditions(".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log")
-
-                        if ( retry_build_1 || retry_build_2 ) {
-                            retry_build = true
-                        }
+                        retry_build = checkRetriableConditions(".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log")
                     }
 
                     stage('Download Artefacts') {
