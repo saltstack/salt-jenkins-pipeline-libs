@@ -23,7 +23,7 @@ def call(List<String> conditions_found, String filename) {
             createSummary(
                 id: ssh_timeout_id,
                 icon: 'warning.png',
-                text: 'SSH Timeout Detected'
+                text: '<b>SSH Timeout Detected</b>'
             )
         }
 
@@ -54,7 +54,7 @@ def call(List<String> conditions_found, String filename) {
                 createSummary(
                     id: 'mismatch-exit-codes',
                     icon: 'warning.png',
-                    text: 'Test suite reported exit code of 0 but nox failed with exit code -9'
+                    text: '<b>Test suite reported exit code of 0 but nox failed with exit code -9.</b>'
                 )
             }
         }
