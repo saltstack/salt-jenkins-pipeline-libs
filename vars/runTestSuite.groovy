@@ -204,7 +204,8 @@ def call(Map options) {
 
                     if ( retrying == false ) {
                         // Let's see if we should retry the build
-                        retry_build = checkRetriableConditions(".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log")
+                        def List<String> conditions_found = []
+                        retry_build = checkRetriableConditions(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log")
                     }
 
                     stage('Download Artefacts') {
