@@ -20,10 +20,15 @@ def call(List<String> conditions_found, String filename) {
             // The match succeeded
             conditions_found << ssh_timeout_id
             retry_condition_found = true
+            def ssh_timeout_message = 'SSH Timeout Detected'
+            addWarningBadge(
+                id: ssh_timeout_id,
+                text: ssh_timeout_message
+            )
             createSummary(
                 id: ssh_timeout_id,
                 icon: 'warning.png',
-                text: '<b>SSH Timeout Detected</b>'
+                text: "<b>${ssh_timeout_message}</b>"
             )
         }
 
@@ -51,10 +56,15 @@ def call(List<String> conditions_found, String filename) {
             if ( nox_exitcode_check_rc == 0 ) {
                 retry_condition_found = true
                 conditions_found << check_exit_codes_id
+                def check_exit_codes_message = 'Test suite reported exit code of 0 but nox failed with exit code -9.'
+                addWarningBadge(
+                    id: check_exit_codes_id,
+                    text: check_exit_codes_message
+                )
                 createSummary(
-                    id: 'mismatch-exit-codes',
+                    id: check_exit_codes_id,
                     icon: 'warning.png',
-                    text: '<b>Test suite reported exit code of 0 but nox failed with exit code -9.</b>'
+                    text: "<b>${check_exit_codes_message}</b>"
                 )
             }
         }
