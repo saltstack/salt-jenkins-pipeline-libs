@@ -165,7 +165,11 @@ def call(Map options) {
             }
 
             try {
-                timeout(time: testrun_timeout, unit: 'HOURS') {
+                // Since we reserve for spot instances for a maximum of 6 hours,
+                // and we also set the maximum of some of the pipelines to 6 hours,
+                // the following timeout get's 15 minutes shaved off so that we
+                // have at least that ammount of time to download artifacts
+                timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
                     stage('Converge VM') {
                         if ( macos_build ) {
                             sh '''
