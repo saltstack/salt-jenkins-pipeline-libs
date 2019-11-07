@@ -72,7 +72,6 @@ def call(Map options) {
         "SALT_TARGET_BRANCH=${salt_target_branch}",
         "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
         "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
-        'PATH=~/.rbenv/shims:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin',
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
         "TEST_PLATFORM=${distro_name}-${distro_version}",
