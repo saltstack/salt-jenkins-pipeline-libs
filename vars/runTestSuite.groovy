@@ -139,7 +139,6 @@ def call(Map options) {
                             cp -f ~/workspace/spot.yml .kitchen.local.yml
                             t=$(shuf -i 30-120 -n 1); echo "Sleeping $t seconds"; sleep $t
                             bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); echo "ExitCode: $?";
-                            rm -f .kitchen.local.yml
                             '''
                         } else {
                             sh '''
@@ -159,6 +158,7 @@ def call(Map options) {
                     sh '''
                     bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:'
                     bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'instance_type:' -A5
+                    rm -f .kitchen.local.yml
                     '''
                 }
             }
