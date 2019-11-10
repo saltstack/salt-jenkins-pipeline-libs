@@ -4,7 +4,6 @@ def call(Map options) {
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
     def String python_version = options.get('python_version')
-    def String salt_target_branch = options.get('salt_target_branch')
     def String golden_images_branch = options.get('golden_images_branch')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
@@ -45,7 +44,6 @@ def call(Map options) {
     Distro: ${distro_name}
     Distro Version: ${distro_version}
     Python Version: ${python_version}
-    Salt Target Branch: ${salt_target_branch}
     Golden Images Branch: ${golden_images_branch}
     Nox Env Name: ${nox_env_name}
     Nox Passthrough Opts: ${nox_passthrough_opts}
@@ -69,7 +67,6 @@ def call(Map options) {
         "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
         'NOX_ENABLE_FROM_FILENAMES=true',
         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-        "SALT_TARGET_BRANCH=${salt_target_branch}",
         "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
         "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
         "RBENV_VERSION=${rbenv_version}",
@@ -107,7 +104,6 @@ def call(Map options) {
             stage('Clone') {
                 cleanWs notFailBuild: true
                 checkout scm
-                sh 'git fetch --no-tags origin +refs/heads/${SALT_TARGET_BRANCH}:refs/remotes/origin/${SALT_TARGET_BRANCH}'
             }
 
             // Setup the kitchen required bundle
