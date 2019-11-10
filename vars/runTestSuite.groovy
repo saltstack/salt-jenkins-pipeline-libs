@@ -19,6 +19,7 @@ def call(Map options) {
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
     def String ami_image_id = options.get('ami_image_id', '')
     def Boolean retrying = options.get('retrying', false)
+    def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -233,29 +234,31 @@ def call(Map options) {
                         bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
                         '''
                     }
-                    stage('Upload Coverage') {
-                        if ( run_full ) {
-                            def distro_strings = [
-                                distro_name,
-                                distro_version
-                            ]
-                            def report_strings = (
-                                [python_version] + nox_env_name.split('-') + extra_codecov_flags
-                            ).flatten()
-                            uploadCodeCoverage(
-                                report_path: 'artifacts/coverage/tests.xml',
-                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                            )
-                            sleep(
-                                time: 5,
-                                unit: 'SECONDS'
-                            )
-                            uploadCodeCoverage(
-                                report_path: 'artifacts/coverage/salt.xml',
-                                report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                            )
+                    if ( upload_test_coverage == true ) {
+                        stage('Upload Coverage') {
+                            if ( run_full ) {
+                                def distro_strings = [
+                                    distro_name,
+                                    distro_version
+                                ]
+                                def report_strings = (
+                                    [python_version] + nox_env_name.split('-') + extra_codecov_flags
+                                ).flatten()
+                                uploadCodeCoverage(
+                                    report_path: 'artifacts/coverage/tests.xml',
+                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                    report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                )
+                                sleep(
+                                    time: 5,
+                                    unit: 'SECONDS'
+                                )
+                                uploadCodeCoverage(
+                                    report_path: 'artifacts/coverage/salt.xml',
+                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                    report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                )
+                            }
                         }
                     }
                 }
