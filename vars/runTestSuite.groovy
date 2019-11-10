@@ -107,7 +107,7 @@ def call(Map options) {
             stage('Clone') {
                 cleanWs notFailBuild: true
                 checkout scm
-                sh 'git fetch --no-tags https://github.com/saltstack/salt.git +refs/heads/${SALT_TARGET_BRANCH}:refs/remotes/origin/${SALT_TARGET_BRANCH}'
+                sh 'git fetch --no-tags origin +refs/heads/${SALT_TARGET_BRANCH}:refs/remotes/origin/${SALT_TARGET_BRANCH}'
             }
 
             // Setup the kitchen required bundle
