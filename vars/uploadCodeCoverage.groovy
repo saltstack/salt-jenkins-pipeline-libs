@@ -18,7 +18,7 @@ def call(Map options) {
                     withCredentials([[$class: 'StringBinding', credentialsId: credentials_id, variable: credentials_variable_name]]) {
                         sh '''
                         if [ -f "${REPORT_PATH}" ]; then
-                            curl -L https://codecov.io/bash | /bin/sh -s -- -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}"
+                            curl -L https://codecov.io/bash | /bin/bash -s -- -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}"
                         fi
                         '''
                     }
