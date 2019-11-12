@@ -20,6 +20,7 @@ def call(Map options) {
     def String ami_image_id = options.get('ami_image_id', '')
     def Boolean retrying = options.get('retrying', false)
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
+    def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -41,7 +42,10 @@ def call(Map options) {
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
 
-    echo """
+    // Enforce build concurrency
+    enforceBuildConcurrency(options)
+
+    echo """\
     Distro: ${distro_name}
     Distro Version: ${distro_version}
     Python Version: ${python_version}
@@ -59,7 +63,7 @@ def call(Map options) {
     Kitchen Verifier File: ${kitchen_verifier_file}
     Kitchen Platforms File: ${kitchen_platforms_file}
     Computed Machine Hostname: ${vm_hostname}
-    """
+    """.stripIndent()
 
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
@@ -76,6 +80,12 @@ def call(Map options) {
         "FORCE_FULL=${run_full}",
         "TEST_VM_HOSTNAME=${vm_hostname}"
     ]
+
+    if ( ami_image_id != '' ) {
+        echo """\
+        Amazon AMI: ${ami_image_id}
+        """.stripIndent()
+    }
 
     if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
