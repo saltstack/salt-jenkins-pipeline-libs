@@ -12,7 +12,7 @@ def call(Map options) {
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
-    def String notify_slack_channel = options.get('notify_slack_channel', '#jenkins-prod-pr')
+    def String notify_slack_channel = options.get('notify_slack_channel', '')
     def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
@@ -30,6 +30,16 @@ def call(Map options) {
         extra_parts: extra_codecov_flags,
         retrying: retrying
     )
+
+    if ( notify_slack_channel == '' ) {
+        if (env.CHANGE_ID) {
+            // This is a PR
+            notify_slack_channel = '#jenkins-prod-pr'
+        } else {
+            // This is a branch build
+            notify_slack_channel = '#jenkins-prod'
+        }
+    }
 
     def Boolean retry_build = false
 
