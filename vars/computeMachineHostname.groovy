@@ -19,8 +19,11 @@ def call(Map opts) {
     if ( env.CHANGE_ID ) {
         // This is a PR
         hostname_parts << "${env.CHANGE_ID}"
-    } else {
+    } else if ( env.CHANGE_TARGET ) {
+        // Still a PR, this is the target branch
         hostname_parts << "${env.CHANGE_TARGET}"
+    } else {
+        hostname_parts << "${env.BRANCH_NAME.replace('/', '-')}"
     }
 
     hostname_parts << "${env.BUILD_NUMBER}"
@@ -45,11 +48,17 @@ def call(Map opts) {
         m2crypto: 'm2c',
         pycryptodomex: 'pcdomex',
         tornado: 'trndo',
+        macosx: 'mac',
+        highsierra: 'hsierra',
+        mojave: 'mjv'
     ]
 
     replacements.each { original, replacement ->
         machine_hostname = machine_hostname.replace(original, replacement)
     }
+
+    // No Dots!
+    machine_hostname = machine_hostname.replace('.', '_')
 
     return machine_hostname
 }
