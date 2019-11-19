@@ -33,6 +33,10 @@ def call(Map options) {
             runtests_options = options.clone()
             runtests_options['test_suite_name'] = _splits[split]['name']
             runtests_options['nox_passthrough_opts'] = "${runtests_options['nox_passthrough_opts']} ${_splits[split]['nox_passthrough_opts']}"
+            if ( ! runtests_options.get('extra_codecov_flags', null) ) {
+                runtests_options['extra_codecov_flags'] = []
+            }
+            runtests_options['extra_codecov_flags'] << split
             runTests(runtests_options)
         }
     }
