@@ -1,29 +1,14 @@
 
 def call(Map opts) {
     def env = opts.get('env')
-    def String distro_name = opts.get('distro_name')
-    def String distro_version = opts.get('distro_version')
-    def String python_version = opts.get('python_version')
-    def String nox_env_name = opts.get('nox_env_name')
     def String[] extra_parts = opts.get('extra_parts', [])
     def Boolean retrying = opts.get('retrying', false)
 
     def hostname_parts = [
-        distro_name,
-        distro_version,
-        python_version,
-        nox_env_name.split('-'),
+        env.BUILD_TAG,
         extra_parts
     ]
 
-    if ( env.CHANGE_ID ) {
-        // This is a PR
-        hostname_parts << "${env.CHANGE_ID}"
-    } else {
-        hostname_parts << "${env.CHANGE_TARGET}"
-    }
-
-    hostname_parts << "${env.BUILD_NUMBER}"
     if ( retrying == true ) {
         hostname_parts << "rtr"
     }
@@ -45,11 +30,17 @@ def call(Map opts) {
         m2crypto: 'm2c',
         pycryptodomex: 'pcdomex',
         tornado: 'trndo',
+        macosx: 'mac',
+        highsierra: 'hsierra',
+        mojave: 'mjv'
     ]
 
     replacements.each { original, replacement ->
         machine_hostname = machine_hostname.replace(original, replacement)
     }
+
+    // No Dots!
+    machine_hostname = machine_hostname.replace('.', '_')
 
     return machine_hostname
 }
