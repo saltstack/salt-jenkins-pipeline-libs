@@ -12,7 +12,7 @@ def call(Map options) {
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
-    def String notify_slack_channel = options.get('notify_slack_channel', '#jenkins-prod-pr')
+    def String notify_slack_channel = options.get('notify_slack_channel', '')
     def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
@@ -20,6 +20,9 @@ def call(Map options) {
     def String ami_image_id = options.get('ami_image_id', '')
     def Boolean retrying = options.get('retrying', false)
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
+    def Integer concurrent_builds = options.get('concurrent_builds', 1)
+    def String test_suite_name = options.get('test_suite_name', null)
+    def String run_tests_stage_name
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -29,6 +32,16 @@ def call(Map options) {
         extra_parts: extra_codecov_flags,
         retrying: retrying
     )
+
+    if ( notify_slack_channel == '' ) {
+        if (env.CHANGE_ID) {
+            // This is a PR
+            notify_slack_channel = '#jenkins-prod-pr'
+        } else {
+            // This is a branch build
+            notify_slack_channel = '#jenkins-prod'
+        }
+    }
 
     def Boolean retry_build = false
 
@@ -41,7 +54,10 @@ def call(Map options) {
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
 
-    echo """
+    // Enforce build concurrency
+    enforceBuildConcurrency(options)
+
+    echo """\
     Distro: ${distro_name}
     Distro Version: ${distro_version}
     Python Version: ${python_version}
@@ -59,7 +75,7 @@ def call(Map options) {
     Kitchen Verifier File: ${kitchen_verifier_file}
     Kitchen Platforms File: ${kitchen_platforms_file}
     Computed Machine Hostname: ${vm_hostname}
-    """
+    """.stripIndent()
 
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
@@ -76,6 +92,12 @@ def call(Map options) {
         "FORCE_FULL=${run_full}",
         "TEST_VM_HOSTNAME=${vm_hostname}"
     ]
+
+    if ( ami_image_id != '' ) {
+        echo """\
+        Amazon AMI: ${ami_image_id}
+        """.stripIndent()
+    }
 
     if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
@@ -123,10 +145,10 @@ def call(Map options) {
                     '''
                     sh """
                     if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-create.log"
+                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
                     fi
                     if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-create.log"
+                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
                     fi
                     """
                 } else {
@@ -145,10 +167,10 @@ def call(Map options) {
                         }
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-create.log"
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
                         fi
                         if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-create.log"
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
                         fi
                         """
                     }
@@ -178,14 +200,21 @@ def call(Map options) {
                         }
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-converge.log"
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-converge.log"
                         fi
                         if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-converge.log"
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-converge.log"
                         fi
                         """
                     }
-                    stage('Run Tests') {
+                    if ( test_suite_name == null ) {
+                        run_tests_stage_name = "Run Tests"
+                        test_suite_name = ''
+                    } else {
+                        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
+                    }
+
+                    stage(run_tests_stage_name) {
                         withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
                             sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";'
                         }
@@ -195,17 +224,17 @@ def call(Map options) {
                 try {
                     sh """
                     if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log"
+                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log"
                     fi
                     if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-verify.log"
+                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-verify.log"
                     fi
                     """
 
                     if ( retrying == false ) {
                         // Let's see if we should retry the build
                         def List<String> conditions_found = []
-                        retry_build = checkRetriableConditions(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-verify.log")
+                        retry_build = checkRetriableConditions(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
                     }
 
                     stage('Download Artefacts') {
@@ -216,10 +245,10 @@ def call(Map options) {
                         }
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-download.log"
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-download.log"
                         fi
                         if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-download.log"
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-download.log"
                         fi
                         """
                     }
@@ -248,10 +277,6 @@ def call(Map options) {
                                     report_path: 'artifacts/coverage/tests.xml',
                                     report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
                                     report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                )
-                                sleep(
-                                    time: 5,
-                                    unit: 'SECONDS'
                                 )
                                 uploadCodeCoverage(
                                     report_path: 'artifacts/coverage/salt.xml',
