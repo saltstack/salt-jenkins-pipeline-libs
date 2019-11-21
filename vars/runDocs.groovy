@@ -6,7 +6,7 @@ def call(Map options) {
 
     def env = options.get('env')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
-    def Integer testrun_timeout = options.get('testrun_timeout')
+    def Integer testrun_timeout = options.get('testrun_timeout', 2)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'docs')
     def String notify_slack_channel = options.get('notify_slack_channel', '')
 
@@ -15,7 +15,7 @@ def call(Map options) {
             // This is a PR
             notify_slack_channel = '#jenkins-prod-pr'
         } else {
-            // This is a branch build
+            // This is not a PR
             notify_slack_channel = '#jenkins-prod'
         }
     }
