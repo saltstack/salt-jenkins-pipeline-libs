@@ -14,7 +14,7 @@ def call(Map options) {
     def String golden_images_branch = options.get('golden_images_branch')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
-    def Integer testrun_timeout = options.get('testrun_timeout')
+    def Integer testrun_timeout = options.get('testrun_timeout', 6)
     def Boolean run_full = options.get('run_full', true)
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
