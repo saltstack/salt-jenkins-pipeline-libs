@@ -139,9 +139,9 @@ def call(Map options) {
             // Setup the kitchen required bundle
             stage('Setup') {
                 if ( macos_build ) {
-                    sh 'bundle install --with vagrant macos --without ec2 windows opennebula docker'
+                    sh 'bundle install --with vagrant --without ec2 windows docker'
                 } else {
-                    sh 'bundle install --with ec2 windows --without docker macos opennebula vagrant'
+                    sh 'bundle install --with ec2 windows --without docker vagrant'
                 }
             }
 
@@ -163,12 +163,12 @@ def call(Map options) {
                         if ( use_spot_instances ) {
                             sh '''
                             cp -f ~/workspace/spot.yml .kitchen.local.yml
-                            t=$(shuf -i 30-120 -n 1); echo "Sleeping $t seconds"; sleep $t
+                            t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                             bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); echo "ExitCode: $?";
                             '''
                         } else {
                             sh '''
-                            t=$(shuf -i 30-120 -n 1); echo "Sleeping $t seconds"; sleep $t
+                            t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                             bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
                             '''
                         }
