@@ -6,8 +6,7 @@ def call(Map options) {
 
     def env = options.get('env')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
-    def Integer run_timeout = options.get('run_timeout')
-    def String salt_target_branch = options.get('salt_target_branch', 'master')
+    def Integer testrun_timeout = options.get('testrun_timeout', 3)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'lint')
     def String notify_slack_channel = options.get('notify_slack_channel', '')
 
@@ -26,50 +25,49 @@ def call(Map options) {
     // Enforce build concurrency
     enforceBuildConcurrency(options)
 
-    wrappedNode(jenkins_slave_label, run_timeout, notify_slack_channel) {
+    wrappedNode(jenkins_slave_label, testrun_timeout, notify_slack_channel) {
         try {
-            withEnv(["SALT_TARGET_BRANCH=${salt_target_branch}"]) {
-                // Checkout the repo
-                stage('Clone') {
-                    cleanWs notFailBuild: true
-                    checkout scm
-                }
+            // Checkout the repo
+            stage('Clone') {
+                cleanWs notFailBuild: true
+                checkout scm
+            }
 
-                // Setup the kitchen required bundle
-                stage('Setup') {
+            // Setup the kitchen required bundle
+            stage('Setup') {
 
 
-                    if (env.CHANGE_ID) {
-                        // Only lint changes on PR builds
-                        sh '''
-                        # Need -M to detect renames otherwise they are reported as Delete and Add, need -C to detect copies, -C includes -M
-                        # -M is on by default in git 2.9+
-                        git diff --name-status -l99999 -C "origin/${SALT_TARGET_BRANCH}" > file-list-status.log
-                        # the -l increase the search limit, lets use awk so we do not need to repeat the search above.
-                        gawk 'BEGIN {FS="\\t"} {if ($1 != "D") {print $NF}}' file-list-status.log > file-list-changed.log
-                        gawk 'BEGIN {FS="\\t"} {if ($1 == "D") {print $NF}}' file-list-status.log > file-list-deleted.log
-                        (git diff --name-status -l99999 -C "origin/${SALT_TARGET_BRANCH}" "origin/$BRANCH_NAME";echo "---";git diff --name-status -l99999 -C "origin/$BRANCH_NAME";printenv|grep -E '=[0-9a-z]{40,}+$|COMMIT=|BRANCH') > file-list-experiment.log
-                        '''
-                        archiveArtifacts(
-                            artifacts: 'file-list-status.log,file-list-changed.log,file-list-deleted.log,file-list-experiment.log',
-                            allowEmptyArchive: true
-                        )
-                    }
-
+                if (env.CHANGE_ID) {
+                    // Only lint changes on PR builds
                     sh '''
-                    eval "$(pyenv init -)"
-                    pyenv --version
-                    pyenv install --skip-existing 2.7.15
-                    pyenv install --skip-existing 3.6.8
-                    pyenv shell 3.6.8 2.7.15
-                    python --version
-                    pip3 install -U nox-py2==2019.6.25
-                    nox --version
-                    # Create the required virtualenvs in serial
-                    nox --install-only -e lint-salt
-                    nox --install-only -e lint-tests
+                    # Need -M to detect renames otherwise they are reported as Delete and Add, need -C to detect copies, -C includes -M
+                    # -M is on by default in git 2.9+
+                    # CHANGE_TARGET only exists on PR builds
+                    git diff --name-status -l99999 -C "origin/${CHANGE_TARGET}" > file-list-status.log
+                    # the -l increase the search limit, lets use awk so we do not need to repeat the search above.
+                    gawk 'BEGIN {FS="\\t"} {if ($1 != "D") {print $NF}}' file-list-status.log > file-list-changed.log
+                    gawk 'BEGIN {FS="\\t"} {if ($1 == "D") {print $NF}}' file-list-status.log > file-list-deleted.log
+                    (git diff --name-status -l99999 -C "origin/${CHANGE_TARGET}" "origin/${BRANCH_NAME}";echo "---";git diff --name-status -l99999 -C "origin/${BRANCH_NAME}";printenv|grep -E '=[0-9a-z]{40,}+$|COMMIT=|BRANCH') > file-list-experiment.log
                     '''
+                    archiveArtifacts(
+                        artifacts: 'file-list-status.log,file-list-changed.log,file-list-deleted.log,file-list-experiment.log',
+                        allowEmptyArchive: true
+                    )
                 }
+
+                sh '''
+                eval "$(pyenv init -)"
+                pyenv --version
+                pyenv install --skip-existing 2.7.15
+                pyenv install --skip-existing 3.6.8
+                pyenv shell 3.6.8 2.7.15
+                python --version
+                pip3 install -U nox-py2==2019.6.25
+                nox --version
+                # Create the required virtualenvs in serial
+                nox --install-only -e lint-salt
+                nox --install-only -e lint-tests
+                '''
             }
 
             if (env.CHANGE_ID) {
@@ -182,6 +180,12 @@ def call(Map options) {
                 }
             }
         } finally {
+            def salt_target_branch
+            if (env.CHANGE_ID) {
+                salt_target_branch = "env.CHANGE_TARGET"
+            } else {
+                salt_target_branch = "env.BRANCH_NAME"
+            }
             publishIssues(
                 enabledForFailure: true,
                 aggregatingResults: true,
