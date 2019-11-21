@@ -180,16 +180,16 @@ def call(Map options) {
                 }
             }
         } finally {
-            def salt_target_branch
+            def reference_job_name
             if (env.CHANGE_ID) {
-                salt_target_branch = "env.CHANGE_TARGET"
+                reference_job_name = "env.CHANGE_TARGET"
             } else {
-                salt_target_branch = "env.BRANCH_NAME"
+                reference_job_name = "env.BRANCH_NAME"
             }
             publishIssues(
                 enabledForFailure: true,
                 aggregatingResults: true,
-                referenceJobName: "pr-lint/${salt_target_branch}",
+                referenceJobName: "pr-lint/${reference_job_name}",
                 qualityGates: [
                     [threshold: 1, type: 'TOTAL', unstable: false]
                 ],
