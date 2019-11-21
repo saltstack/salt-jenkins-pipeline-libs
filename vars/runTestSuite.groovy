@@ -1,5 +1,12 @@
 def call(Map options) {
 
+    properties([
+        [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
+        parameters([
+            booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+        ])
+    ])
+
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
