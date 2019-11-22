@@ -145,33 +145,12 @@ def call(Map options) {
                 }
             }
 
-            stage('Create VM') {
-                if ( macos_build ) {
-                    sh '''
-                    bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
-                    '''
-                    sh """
-                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
-                    fi
-                    if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
-                    fi
-                    """
-                } else {
-                    retry(3) {
-                        if ( use_spot_instances ) {
-                            sh '''
-                            cp -f ~/workspace/spot.yml .kitchen.local.yml
-                            t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); echo "ExitCode: $?";
-                            '''
-                        } else {
-                            sh '''
-                            t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
-                            '''
-                        }
+            def createVM() {
+                stage('Create VM') {
+                    if ( macos_build ) {
+                        sh '''
+                        bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                        '''
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
@@ -180,14 +159,38 @@ def call(Map options) {
                             mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
                         fi
                         """
+                    } else {
+                        retry(3) {
+                            if ( use_spot_instances ) {
+                                sh '''
+                                cp -f ~/workspace/spot.yml .kitchen.local.yml
+                                t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
+                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                '''
+                            } else {
+                                sh '''
+                                t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
+                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                '''
+                            }
+                            sh """
+                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
+                            fi
+                            if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
+                            fi
+                            """
+                        }
+                        sh '''
+                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:'
+                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'instance_type:' -A5
+                        rm -f .kitchen.local.yml
+                        '''
                     }
-                    sh '''
-                    bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:'
-                    bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'instance_type:' -A5
-                    rm -f .kitchen.local.yml
-                    '''
                 }
             }
+            createVM()
 
             try {
                 // Since we reserve for spot instances for a maximum of 6 hours,
@@ -195,35 +198,44 @@ def call(Map options) {
                 // the following timeout get's 15 minutes shaved off so that we
                 // have at least that ammount of time to download artifacts
                 timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
-                    stage('Converge VM') {
-                        if ( macos_build ) {
-                            sh '''
-                            ssh-agent /bin/bash -c 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?"'
-                            '''
-                        } else {
-                            sh '''
-                            ssh-agent /bin/bash -c 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?"'
-                            '''
+                    def convergeVM() {
+                        stage('Converge VM') {
+                            if ( macos_build ) {
+                                sh '''
+                                ssh-agent /bin/bash -c 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                '''
+                            } else {
+                                sh '''
+                                ssh-agent /bin/bash -c 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                '''
+                            }
+                            sh """
+                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-converge.log"
+                            fi
+                            if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-converge.log"
+                            fi
+                            """
                         }
-                        sh """
-                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-converge.log"
-                        fi
-                        if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-converge.log"
-                        fi
-                        """
                     }
+                    try {
+                        convergeVM()
+                    } catch(e) {
+                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
+                        createVM()
+                        convergeVM()
+                    }
+
                     if ( test_suite_name == null ) {
                         run_tests_stage_name = "Run Tests"
-                        test_suite_name = ''
                     } else {
                         run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
                     }
 
                     stage(run_tests_stage_name) {
                         withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";'
+                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                         }
                     }
                 }
@@ -246,9 +258,7 @@ def call(Map options) {
 
                     stage('Download Artefacts') {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
-                            sh '''
-                            bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0
-                            '''
+                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                         }
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
@@ -266,9 +276,7 @@ def call(Map options) {
                     junit 'artifacts/xml-unittests-output/*.xml'
                 } finally {
                     stage('Cleanup') {
-                        sh '''
-                        bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; echo "ExitCode: $?";
-                        '''
+                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                     }
                     if ( upload_test_coverage == true ) {
                         stage('Upload Coverage') {
