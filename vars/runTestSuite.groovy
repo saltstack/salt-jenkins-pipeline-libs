@@ -145,7 +145,7 @@ def call(Map options) {
                 }
             }
 
-            def createVM() {
+            def createVM = {
                 stage('Create VM') {
                     if ( macos_build ) {
                         sh '''
@@ -190,7 +190,7 @@ def call(Map options) {
                     }
                 }
             }
-            createVM()
+            createVM.call()
 
             try {
                 // Since we reserve for spot instances for a maximum of 6 hours,
@@ -198,15 +198,15 @@ def call(Map options) {
                 // the following timeout get's 15 minutes shaved off so that we
                 // have at least that ammount of time to download artifacts
                 timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
-                    def convergeVM() {
+                    def convergeVM = {
                         stage('Converge VM') {
                             if ( macos_build ) {
                                 sh '''
-                                ssh-agent /bin/bash -c 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                                 '''
                             } else {
                                 sh '''
-                                ssh-agent /bin/bash -c 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                                 '''
                             }
                             sh """
@@ -220,11 +220,13 @@ def call(Map options) {
                         }
                     }
                     try {
-                        convergeVM()
+                        convergeVM.call()
                     } catch(e) {
+                        // Retry creation once if converge fails
+                        echo "Retrying Create VM and Converge VM"
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
-                        createVM()
-                        convergeVM()
+                        createVM.call()
+                        convergeVM.call()
                     }
 
                     if ( test_suite_name == null ) {
