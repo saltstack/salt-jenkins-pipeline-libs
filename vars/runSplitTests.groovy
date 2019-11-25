@@ -21,6 +21,11 @@ def call(Map options) {
         ]
     ]
 
+    // Enforce build concurrency
+    enforceBuildConcurrency(options)
+    // Now that we have enforced build concurrency, let's disable it when calling runTests
+    options['concurrent_builds'] = -1
+
     def runtests_options
 
     if ( ! splits ) {
