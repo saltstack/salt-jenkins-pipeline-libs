@@ -1,9 +1,23 @@
 def call(Map options) {
 
     properties([
-        [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
+        [
+            $class: 'BuildDiscarderProperty',
+            strategy: [
+                $class: 'EnhancedOldBuildDiscarder',
+                artifactDaysToKeepStr: '',
+                artifactNumToKeepStr: '',
+                daysToKeepStr: '30',
+                numToKeepStr: '30',
+                discardOnlyOnSuccess: true,
+                holdMaxBuilds: true
+            ]
+        ],
         parameters([
-            booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+            booleanParam(
+                defaultValue: true,
+                description: 'Run full test suite',
+                name: 'runFull')
         ])
     ])
 
@@ -231,6 +245,7 @@ def call(Map options) {
 
                     if ( test_suite_name == null ) {
                         run_tests_stage_name = "Run Tests"
+                        test_suite_name = 'full'
                     } else {
                         run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
                     }
