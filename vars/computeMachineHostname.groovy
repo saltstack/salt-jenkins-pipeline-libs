@@ -32,7 +32,8 @@ def call(Map opts) {
         tornado: 'trndo',
         macosx: 'mac',
         highsierra: 'hsierra',
-        mojave: 'mjv'
+        mojave: 'mjv',
+        catalina: 'ctln'
     ]
 
     replacements.each { original, replacement ->

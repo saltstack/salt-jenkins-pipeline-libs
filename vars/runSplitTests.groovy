@@ -23,14 +23,14 @@ def call(Map options) {
 
     // Enforce build concurrency
     enforceBuildConcurrency(options)
-    // Now that we have enforced build concurrency, let's disable it when calling runTests
+    // Now that we have enforced build concurrency, let's disable it when calling runTestSuite
     options['concurrent_builds'] = -1
 
     def runtests_options
 
     if ( ! splits ) {
         echo "No Splits Defined. Running the full top to bottom test suite"
-        runTests(options)
+        runTestSuite(options)
     } else {
         options.remove('splits')
         echo "Defined Test Suite Splits: ${splits}"
@@ -42,7 +42,7 @@ def call(Map options) {
                 runtests_options['extra_codecov_flags'] = []
             }
             runtests_options['extra_codecov_flags'] << split
-            runTests(runtests_options)
+            runTestSuite(runtests_options)
         }
     }
 }
