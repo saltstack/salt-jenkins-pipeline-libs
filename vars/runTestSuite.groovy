@@ -62,6 +62,13 @@ def call(Map options) {
         }
     }
 
+    if ( test_suite_name == null ) {
+        run_tests_stage_name = "Run Tests"
+        test_suite_name = 'full'
+    } else {
+        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
+    }
+
     def Boolean retry_build = false
 
     // In case we're testing golden images
@@ -325,13 +332,6 @@ def call(Map options) {
                             sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
                             createVM.call()
                             convergeVM.call()
-                        }
-
-                        if ( test_suite_name == null ) {
-                            run_tests_stage_name = "Run Tests"
-                            test_suite_name = 'full'
-                        } else {
-                            run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
                         }
 
                         stage(run_tests_stage_name) {
