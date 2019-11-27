@@ -42,7 +42,6 @@ def call(Map options) {
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', null)
-    def String run_tests_stage_name
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -62,11 +61,27 @@ def call(Map options) {
         }
     }
 
+    def String create_stage_name
+    def String converge_stage_name
+    def String run_tests_stage_name
+    def String download_stage_name
+    def String cleanup_stage_name
+    def String upload_stage_name
     if ( test_suite_name == null ) {
+        create_stage_name = "Create VM"
+        converge_stage_name = "Converge VM"
         run_tests_stage_name = "Run Tests"
+        download_stage_name = "Download Artefacts"
+        cleanup_stage_name = "Cleanup"
+        upload_stage_name = "Upload Coverage"
         test_suite_name = 'full'
     } else {
+        create_stage_name = "Create ${test_suite_name.capitalize()} Tests VM"
+        converge_stage_name = "Converge ${test_suite_name.capitalize()} Tests VM"
         run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
+        download_stage_name = "Download ${test_suite_name.capitalize()} Tests Artefacts"
+        cleanup_stage_name = "Cleanup ${test_suite_name.capitalize()} Tests"
+        upload_stage_name = "Upload ${test_suite_name.capitalize()} Tests Coverage"
     }
 
     def Boolean retry_build = false
@@ -246,7 +261,7 @@ def call(Map options) {
                 }
 
                 def createVM = {
-                    stage('Create VM') {
+                    stage(create_stage_name) {
                         if ( macos_build ) {
                             stage('Vagrant Box Details') {
                                 sh '''
@@ -304,7 +319,7 @@ def call(Map options) {
                     // have at least that ammount of time to download artifacts
                     timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
                         def convergeVM = {
-                            stage('Converge VM') {
+                            stage(converge_stage_name) {
                                 if ( macos_build ) {
                                     sh '''
                                     ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
@@ -355,7 +370,7 @@ def call(Map options) {
                         def List<String> conditions_found = []
                         checkForKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
 
-                        stage('Download Artefacts') {
+                        stage(download_stage_name) {
                             withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
                                 sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                             }
@@ -374,7 +389,7 @@ def call(Map options) {
                         )
                         junit 'artifacts/xml-unittests-output/*.xml'
                     } finally {
-                        stage('Cleanup') {
+                        stage(cleanup_stage_name) {
                             sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                             if ( macos_build ) {
                                 try {
@@ -396,7 +411,7 @@ def call(Map options) {
                             }
                         }
                         if ( upload_test_coverage == true ) {
-                            stage('Upload Coverage') {
+                            stage(upload_stage_name) {
                                 if ( run_full ) {
                                     def distro_strings = [
                                         distro_name,
