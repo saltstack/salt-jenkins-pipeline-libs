@@ -117,14 +117,11 @@ def call(Map options) {
                 // Cleanup old VMs
                 stage('VM Cleanup') {
                     sh '''
+                    # Only remove running VMs here so we don't interfere with building golden images.  Stopped VMs will be cleaned up by a jenkins startup script when it connects.
                     for i in `prlctl list -aij|jq -r '.[]|select((.Uptime|tonumber > 86400) and (.State == "running"))|.ID'`
                     do
-                        prlctl stop $i --kill
-                    done
-                    # don't delete vm's that haven't started yet ((.State == "stopped") and (.Uptime == "0"))
-                    for i in `prlctl list -aij|jq -r '.[]|select((.Uptime|tonumber > 0) and (.State != "running"))|.ID'`
-                    do
-                        prlctl delete $i
+                        prlctl stop $i --kill || true
+                        prlctl delete $i || true
                     done
                     '''
                 }
