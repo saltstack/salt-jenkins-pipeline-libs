@@ -1,8 +1,14 @@
 def call(Map options) {
 
-    properties([
-        [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]]
-    ])
+    if (env.CHANGE_ID) {
+        properties([
+            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
+        ])
+    } else {
+        properties([
+            [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
+        ])
+    }
 
     def env = options.get('env')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)

@@ -1,11 +1,20 @@
 def call(Map options) {
 
-    properties([
-        [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
-        parameters([
-            booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+    if (env.CHANGE_ID) {
+        properties([
+            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
+            parameters([
+                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+            ])
         ])
-    ])
+    } else {
+        properties([
+            [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
+            parameters([
+                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+            ])
+        ])
+    }
 
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
@@ -268,8 +277,19 @@ def call(Map options) {
                         fi
                         """
                     }
+
+                    sh """
+                    # Do not error if there are no files to compress
+                    xz .kitchen/logs/*-verify.log || true
+                    if tail -n 1 artifacts/logs/runtests-* | grep -q 'exit code: 0'
+                    then
+                        # Do not error if there are no files to compress
+                        xz artifacts/logs/runtests-* || true
+                    fi
+                    """
+
                     archiveArtifacts(
-                        artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
+                        artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
                         allowEmptyArchive: true
                     )
                     junit 'artifacts/xml-unittests-output/*.xml'
