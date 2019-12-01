@@ -139,6 +139,9 @@ def call(Map options) {
             // Checkout the repo
             stage('Clone') {
                 cleanWs notFailBuild: true
+                sh '''
+                t=$(shuf -i 0-180 -n 1); echo "Sleeping $t seconds"; sleep $t
+                '''
                 checkout scm
             }
 
