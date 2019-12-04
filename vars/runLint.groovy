@@ -1,13 +1,35 @@
 def call(Map options) {
 
+    def lint_report_issues = []
+
     if (env.CHANGE_ID) {
         properties([
-            buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
+            buildDiscarder(
+                logRotator(
+                    artifactDaysToKeepStr: '',
+                    artifactNumToKeepStr: '3',
+                    daysToKeepStr: '',
+                    numToKeepStr: '5'
+                )
+            ),
         ])
     } else {
-        properties([
-            [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
-        ])
+        properties(
+            [
+                [
+                    $class: 'BuildDiscarderProperty',
+                    strategy: [
+                        $class: 'EnhancedOldBuildDiscarder',
+                        artifactDaysToKeepStr: '',
+                        artifactNumToKeepStr: '',
+                        daysToKeepStr: '30',
+                        numToKeepStr: '30',
+                        discardOnlyOnSuccess: true,
+                        holdMaxBuilds: true
+                    ]
+                ],
+            ]
+        )
     }
 
     def env = options.get('env')
@@ -26,7 +48,6 @@ def call(Map options) {
         }
     }
 
-    def lint_report_issues = []
 
     // Enforce build concurrency
     enforceBuildConcurrency(options)
@@ -139,50 +160,47 @@ def call(Map options) {
             }
 
             stage('Lint Full') {
-                if ( ! env.CHANGE_ID || env.CHANGE_BRANCH =~ /(?i)^merge[._-]/ ) {
-                    // Perform a full linit if this is a merge forward and the change only lint passed
-                    // or if this is a branch build
-                    try {
-                        parallel(
-                            lintSaltFull: {
-                                stage('Lint Salt Full') {
-                                    sh '''
-                                    eval "$(pyenv init - --no-rehash)"
-                                    pyenv shell 3.6.8 2.7.15
-                                    EC=254
-                                    export PYLINT_REPORT=pylint-report-salt-full.log
-                                    nox -e lint-salt
-                                    EC=$?
-                                    exit $EC
-                                    '''
-                                }
-                            },
-                            lintTestsFull: {
-                                stage('Lint Tests Full') {
-                                    sh '''
-                                    eval "$(pyenv init - --no-rehash)"
-                                    pyenv shell 3.6.8 2.7.15
-                                    EC=254
-                                    export PYLINT_REPORT=pylint-report-tests-full.log
-                                    nox -e lint-tests
-                                    EC=$?
-                                    exit $EC
-                                    '''
-                                }
+                // Perform a full linit if change only lint passed
+                try {
+                    parallel(
+                        lintSaltFull: {
+                            stage('Lint Salt Full') {
+                                sh '''
+                                eval "$(pyenv init - --no-rehash)"
+                                pyenv shell 3.6.8 2.7.15
+                                EC=254
+                                export PYLINT_REPORT=pylint-report-salt-full.log
+                                nox -e lint-salt
+                                EC=$?
+                                exit $EC
+                                '''
                             }
+                        },
+                        lintTestsFull: {
+                            stage('Lint Tests Full') {
+                                sh '''
+                                eval "$(pyenv init - --no-rehash)"
+                                pyenv shell 3.6.8 2.7.15
+                                EC=254
+                                export PYLINT_REPORT=pylint-report-tests-full.log
+                                nox -e lint-tests
+                                EC=$?
+                                exit $EC
+                                '''
+                            }
+                        }
+                    )
+                } finally {
+                    def full_logs_pattern = 'pylint-report-*-full.log'
+                    archiveArtifacts(
+                        artifacts: full_logs_pattern,
+                        allowEmptyArchive: true
+                    )
+                    lint_report_issues.add(
+                        scanForIssues(
+                            tool: pyLint(pattern: full_logs_pattern, reportEncoding: 'UTF-8')
                         )
-                    } finally {
-                        def full_logs_pattern = 'pylint-report-*-full.log'
-                        archiveArtifacts(
-                            artifacts: full_logs_pattern,
-                            allowEmptyArchive: true
-                        )
-                        lint_report_issues.add(
-                            scanForIssues(
-                                tool: pyLint(pattern: full_logs_pattern, reportEncoding: 'UTF-8')
-                            )
-                        )
-                    }
+                    )
                 }
             }
         } finally {
