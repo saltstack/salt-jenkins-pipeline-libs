@@ -57,6 +57,12 @@ def call(Map options) {
                                     ansiColor('xterm') {
                                         withAWS(credentials: 'os-imager-aws-creds', region: "${ec2_region}") {
                                             sh """
+                                            mkdir -p bin
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                            unzip -d bin packer_1.4.5_linux_amd64.zip
+                                            PATH="\${PWD}/bin:\${PATH}"
                                             pyenv install 3.6.8 || echo "We already have this python."
                                             pyenv local 3.6.8
                                             pip freeze | grep -s invoke || pip install -r os-images/requirements/py3.6/base.txt
