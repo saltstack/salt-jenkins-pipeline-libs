@@ -48,7 +48,7 @@ def call(Map options) {
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
-    def String test_suite_name = options.get('test_suite_name', null)
+    def String test_suite_name = options.get('test_suite_name', 'full')
     def String run_tests_stage_name
     def String vm_hostname = computeMachineHostname(
         env: env,
@@ -128,6 +128,12 @@ def call(Map options) {
 
     if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
+    }
+
+    if ( test_suite_name == 'full' ) {
+        run_tests_stage_name = "Run Tests"
+    } else {
+        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
     }
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
@@ -244,12 +250,6 @@ def call(Map options) {
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
                         createVM.call()
                         convergeVM.call()
-                    }
-
-                    if ( test_suite_name == null ) {
-                        run_tests_stage_name = "Run Tests"
-                    } else {
-                        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
                     }
 
                     stage(run_tests_stage_name) {
