@@ -205,13 +205,20 @@ def call(Map options) {
                             fi
                             """
                         }
-                        sh '''
-                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
-                        grep 'image_id:' kitchen-diagnose-info.txt
-                        grep 'instance_type:' -A5 kitchen-diagnose-info.txt
-                        rm -f kitchen-diagnose-info.txt
-                        rm -f .kitchen.local.yml
-                        '''
+                        try {
+                            sh '''
+                            bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
+                            grep 'image_id:' kitchen-diagnose-info.txt
+                            grep 'instance_type:' -A5 kitchen-diagnose-info.txt
+                            '''
+                        } catch (Exception kitchen_diagnose_error) {
+                            println "Failed to get the kitchen diagnose information: ${kitchen_diagnose_error}"
+                        } finally {
+                            sh '''
+                            rm -f kitchen-diagnose-info.txt
+                            rm -f .kitchen.local.yml
+                            '''
+                        }
                     }
                 }
             }
