@@ -274,7 +274,7 @@ def call(Map options) {
                     fi
                     """
 
-                    // Let's see if we should retry the build
+                    // Let's report about known problems found
                     def List<String> conditions_found = []
                     reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
 
