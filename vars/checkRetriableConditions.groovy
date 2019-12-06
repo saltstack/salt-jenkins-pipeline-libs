@@ -4,7 +4,7 @@ def call(List<String> conditions_found, String filename) {
     def Boolean retry_condition_found = false
     def String ssh_timeout_id = 'ssh-timeout-warning'
     def String check_exit_codes_id = 'check-exit-codes'
-
+    def String memory_error_id = 'memory-error'
 
     if ( conditions_found.contains(ssh_timeout_id) == false ) {
         // Let's check for SSH Timeouts
@@ -68,6 +68,34 @@ def call(List<String> conditions_found, String filename) {
                 )
             }
         }
+    }
+
+    if ( conditions_found.contains(memory_error_id) == false ) {
+        // Let's check for Memory Errors
+        def memory_error_check_rc = sh(
+            label: 'memory-error',
+            returnStatus: true,
+            script: """
+            grep -q 'Cannot allocate memory' ${filename}
+            """
+        )
+
+        if ( memory_error_check_rc == 0 ) {
+            // The match succeeded
+            conditions_found << memory_error_id
+            retry_condition_found = true
+            def memory_error_message = 'Memory Error Detected'
+            addWarningBadge(
+                id: memory_error_id,
+                text: memory_error_message
+            )
+            createSummary(
+                id: memory_error_id,
+                icon: 'warning.png',
+                text: "<b>${memory_error_message}</b>"
+            )
+        }
+
     }
 
     return retry_condition_found
