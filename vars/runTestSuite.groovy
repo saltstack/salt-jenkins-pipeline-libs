@@ -44,7 +44,6 @@ def call(Map options) {
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
     def String ami_image_id = options.get('ami_image_id', '')
-    def Boolean retrying = options.get('retrying', false)
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
@@ -57,7 +56,6 @@ def call(Map options) {
         python_version: python_version,
         nox_env_name: nox_env_name,
         extra_parts: extra_codecov_flags,
-        retrying: retrying
     )
 
     if ( notify_slack_channel == '' ) {
@@ -276,11 +274,9 @@ def call(Map options) {
                     fi
                     """
 
-                    if ( retrying == false ) {
-                        // Let's see if we should retry the build
-                        def List<String> conditions_found = []
-                        reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
-                    }
+                    // Let's see if we should retry the build
+                    def List<String> conditions_found = []
+                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
 
                     stage('Download Artefacts') {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
