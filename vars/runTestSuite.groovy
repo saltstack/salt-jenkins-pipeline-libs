@@ -1,5 +1,7 @@
 def call(Map options) {
 
+    def Boolean run_full = true
+
     if (env.CHANGE_ID) {
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
@@ -7,12 +9,21 @@ def call(Map options) {
                 booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
             ])
         ])
+        run_full = params.runFull
     } else {
         properties([
-            [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
-            parameters([
-                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
-            ])
+            [
+                $class: 'BuildDiscarderProperty',
+                strategy: [
+                    $class: 'EnhancedOldBuildDiscarder',
+                    artifactDaysToKeepStr: '',
+                    artifactNumToKeepStr: '',
+                    daysToKeepStr: '30',
+                    numToKeepStr: '30',
+                    discardOnlyOnSuccess: true,
+                    holdMaxBuilds: true
+                ]
+            ]
         ])
     }
 
@@ -24,7 +35,6 @@ def call(Map options) {
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
-    def Boolean run_full = params.runFull
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
@@ -34,10 +44,10 @@ def call(Map options) {
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
     def String ami_image_id = options.get('ami_image_id', '')
-    def Boolean retrying = options.get('retrying', false)
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
+    def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
-    def String test_suite_name = options.get('test_suite_name', null)
+    def String test_suite_name = options.get('test_suite_name', 'full')
     def String run_tests_stage_name
     def String vm_hostname = computeMachineHostname(
         env: env,
@@ -46,7 +56,6 @@ def call(Map options) {
         python_version: python_version,
         nox_env_name: nox_env_name,
         extra_parts: extra_codecov_flags,
-        retrying: retrying
     )
 
     if ( notify_slack_channel == '' ) {
@@ -58,8 +67,6 @@ def call(Map options) {
             notify_slack_channel = '#jenkins-prod'
         }
     }
-
-    def Boolean retry_build = false
 
     def Boolean macos_build = false
     if ( distro_name == 'macosx' ) {
@@ -117,6 +124,12 @@ def call(Map options) {
 
     if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
+    }
+
+    if ( test_suite_name == 'full' ) {
+        run_tests_stage_name = "Run Tests"
+    } else {
+        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
     }
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
@@ -188,11 +201,20 @@ def call(Map options) {
                             fi
                             """
                         }
-                        sh '''
-                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:'
-                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'instance_type:' -A5
-                        rm -f .kitchen.local.yml
-                        '''
+                        try {
+                            sh '''
+                            bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
+                            grep 'image_id:' kitchen-diagnose-info.txt
+                            grep 'instance_type:' -A5 kitchen-diagnose-info.txt
+                            '''
+                        } catch (Exception kitchen_diagnose_error) {
+                            println "Failed to get the kitchen diagnose information: ${kitchen_diagnose_error}"
+                        } finally {
+                            sh '''
+                            rm -f kitchen-diagnose-info.txt
+                            rm -f .kitchen.local.yml
+                            '''
+                        }
                     }
                 }
             }
@@ -235,12 +257,6 @@ def call(Map options) {
                         convergeVM.call()
                     }
 
-                    if ( test_suite_name == null ) {
-                        run_tests_stage_name = "Run Tests"
-                    } else {
-                        run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
-                    }
-
                     stage(run_tests_stage_name) {
                         withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
                             sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
@@ -258,11 +274,9 @@ def call(Map options) {
                     fi
                     """
 
-                    if ( retrying == false ) {
-                        // Let's see if we should retry the build
-                        def List<String> conditions_found = []
-                        retry_build = checkRetriableConditions(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
-                    }
+                    // Let's report about known problems found
+                    def List<String> conditions_found = []
+                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
 
                     stage('Download Artefacts') {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
@@ -307,26 +321,30 @@ def call(Map options) {
                                 def report_strings = (
                                     [python_version] + nox_env_name.split('-') + extra_codecov_flags
                                 ).flatten()
-                                uploadCodeCoverage(
-                                    report_path: 'artifacts/coverage/tests.xml',
-                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                )
-                                uploadCodeCoverage(
-                                    report_path: 'artifacts/coverage/salt.xml',
-                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                                )
+                                if ( upload_split_test_coverage ) {
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/tests.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                        report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                    )
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/salt.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                        report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                    )
+                                } else {
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/salt.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                        report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                                    )
+                                }
                             }
                         }
                     }
                 }
             }
         }
-    }
-
-    if ( retrying == false && retry_build == true) {
-        throw new Exception('retry-build')
     }
 
 }
