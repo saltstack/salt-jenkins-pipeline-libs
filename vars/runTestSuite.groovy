@@ -70,8 +70,6 @@ def call(Map options) {
         }
     }
 
-    def Boolean retry_build = false
-
     def Boolean macos_build = false
     if ( distro_name == 'macosx' ) {
         macos_build = true
@@ -281,7 +279,7 @@ def call(Map options) {
                     if ( retrying == false ) {
                         // Let's see if we should retry the build
                         def List<String> conditions_found = []
-                        retry_build = checkRetriableConditions(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
+                        reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
                     }
 
                     stage('Download Artefacts') {
@@ -351,10 +349,6 @@ def call(Map options) {
                 }
             }
         }
-    }
-
-    if ( retrying == false && retry_build == true) {
-        throw new Exception('retry-build')
     }
 
 }
