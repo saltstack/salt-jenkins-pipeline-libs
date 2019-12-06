@@ -36,6 +36,7 @@ def call(Map options) {
     def String ami_image_id = options.get('ami_image_id', '')
     def Boolean retrying = options.get('retrying', false)
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
+    def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', null)
     def String run_tests_stage_name
@@ -307,16 +308,24 @@ def call(Map options) {
                                 def report_strings = (
                                     [python_version] + nox_env_name.split('-') + extra_codecov_flags
                                 ).flatten()
-                                uploadCodeCoverage(
-                                    report_path: 'artifacts/coverage/tests.xml',
-                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                )
-                                uploadCodeCoverage(
-                                    report_path: 'artifacts/coverage/salt.xml',
-                                    report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                                )
+                                if ( upload_split_test_coverage ) {
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/tests.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                        report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                    )
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/salt.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                        report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                    )
+                                } else {
+                                    uploadCodeCoverage(
+                                        report_path: 'artifacts/coverage/salt.xml',
+                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                        report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                                    )
+                                }
                             }
                         }
                     }
