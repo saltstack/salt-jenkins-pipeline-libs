@@ -1,5 +1,7 @@
 def call(Map options) {
 
+    def Boolean run_full = true
+
     if (env.CHANGE_ID) {
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
@@ -7,12 +9,21 @@ def call(Map options) {
                 booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
             ])
         ])
+        run_full = params.runFull
     } else {
         properties([
-            [$class: 'BuildDiscarderProperty', strategy: [$class: 'EnhancedOldBuildDiscarder', artifactDaysToKeepStr: '', artifactNumToKeepStr: '', daysToKeepStr: '30', numToKeepStr: '30',discardOnlyOnSuccess: true, holdMaxBuilds: true]],
-            parameters([
-                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
-            ])
+            [
+                $class: 'BuildDiscarderProperty',
+                strategy: [
+                    $class: 'EnhancedOldBuildDiscarder',
+                    artifactDaysToKeepStr: '',
+                    artifactNumToKeepStr: '',
+                    daysToKeepStr: '30',
+                    numToKeepStr: '30',
+                    discardOnlyOnSuccess: true,
+                    holdMaxBuilds: true
+                ]
+            ]
         ])
     }
 
@@ -24,7 +35,6 @@ def call(Map options) {
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
-    def Boolean run_full = params.runFull
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
