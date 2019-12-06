@@ -2,16 +2,11 @@
 def call(Map opts) {
     def env = opts.get('env')
     def String[] extra_parts = opts.get('extra_parts', [])
-    def Boolean retrying = opts.get('retrying', false)
 
     def hostname_parts = [
         env.BUILD_TAG,
         extra_parts
     ]
-
-    if ( retrying == true ) {
-        hostname_parts << "rtr"
-    }
 
     def String machine_hostname = hostname_parts.flatten().join('-')
 
