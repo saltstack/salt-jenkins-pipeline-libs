@@ -62,7 +62,7 @@ def call(Map options) {
                                             curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
                                             sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
                                             unzip -d bin packer_1.4.5_linux_amd64.zip
-                                            PATH="\${PWD}/bin:\${PATH}"
+                                            export PATH="\${PWD}/bin:\${PATH}"
                                             pyenv install 3.6.8 || echo "We already have this python."
                                             pyenv local 3.6.8
                                             rm -rf venv
