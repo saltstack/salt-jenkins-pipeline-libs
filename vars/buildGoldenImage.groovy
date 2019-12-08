@@ -291,7 +291,7 @@ def call(Map options) {
                                             rm -rf venv
                                             virtualenv venv
                                             . venv/bin/activate
-                                            pip install -r requirements/py3.6/base.txt
+                                            pip install -r os-images/requirements/py3.6/base.txt
                                             inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
                                             """
                                         }
@@ -445,7 +445,7 @@ def call(Map options) {
                                     rm -rf venv
                                     virtualenv venv
                                     . venv/bin/activate
-                                    pip install -r requirements/py3.6/base.txt
+                                    pip install -r os-images/requirements/py3.6/base.txt
                                     inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
                                     """
                                 }
