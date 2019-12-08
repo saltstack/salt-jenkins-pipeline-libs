@@ -72,11 +72,17 @@ def call(List<String> conditions_found, String filename) {
 
     if ( conditions_found.contains(memory_error_id) == false ) {
         // Let's check for Memory Errors
+        def memory_error_grep_strings = [
+            'Cannot allocate memory',
+            'The paging file is too small for this operation to complete',
+            'MemoryError: Unable to allocate internal buffer',
+            '^MemoryError$'
+        ]
         def memory_error_check_rc = sh(
             label: 'memory-error',
             returnStatus: true,
             script: """
-            grep -q 'Cannot allocate memory' ${filename}
+            grep -qE '(${memory_error_grep_strings.join('|')})' ${filename}
             """
         )
 
