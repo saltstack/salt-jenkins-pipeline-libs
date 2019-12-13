@@ -157,20 +157,42 @@ def call(Map options) {
 
             // Setup the kitchen required bundle
             stage('Setup') {
+                sh '''
+                # wait at most 1 hour for other jobs to finish taking care of bundle installs
+                while find /tmp/lock_bundle -mmin -60 | grep -q /tmp/lock_bundle
+                do
+                    echo 'bundle install locked, sleeping 10 seconds'
+                    sleep 10
+                done
+                touch /tmp/lock_bundle
+                '''
                 if ( macos_build ) {
                     sh 'bundle install --with vagrant --without ec2 windows docker'
                 } else {
                     sh 'bundle install --with ec2 windows --without docker vagrant'
                 }
+                sh '''
+                rm -f /tmp/lock_bundle
+                '''
             }
 
             def createVM = {
                 stage('Create VM') {
                     if ( macos_build ) {
+                        sh """
+                        # wait at most 12 hours for the other job to finish downloading/creating the vagrant box
+                        while find /tmp/lock_${distro_version} -mmin -720 | grep -q /tmp/lock_${distro_version}
+                        do
+                            echo 'vm creation locked, sleeping 120 seconds'
+                            sleep 120
+                        done
+                        touch /tmp/lock_${distro_version}
+                        """
                         sh '''
                         bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                         '''
                         sh """
+                        rm -f /tmp/lock_${distro_version}
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
                         fi
