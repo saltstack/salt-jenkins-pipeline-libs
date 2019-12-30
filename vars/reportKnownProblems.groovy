@@ -36,6 +36,8 @@ def call(List<String> conditions_found, String filename) {
 
     if ( conditions_found.contains(check_exit_codes_id) == false ) {
         // Let's check for a test suite exit code of 0 and a nox exit code of -9
+        def nox_exitcode_check_rc
+        def check_exit_codes_message
         def testsuite_exitcode_check_rc = sh(
             label: 'check-exit-codes',
             returnStatus: true,
@@ -46,7 +48,7 @@ def call(List<String> conditions_found, String filename) {
         if ( testsuite_exitcode_check_rc == 0) {
             // Ok, the test suite reported a 0 exit code.
             // How about NOX?
-            def nox_exitcode_check_rc = sh(
+            nox_exitcode_check_rc = sh(
                 label: 'check-exit-codes',
                 returnStatus: true,
                 script: """
@@ -56,7 +58,31 @@ def call(List<String> conditions_found, String filename) {
             if ( nox_exitcode_check_rc == 0 ) {
                 retry_condition_found = true
                 conditions_found << check_exit_codes_id
-                def check_exit_codes_message = 'Test suite reported exit code of 0 but nox failed with exit code -9.'
+                check_exit_codes_message = 'Test suite reported exit code of 0 but nox failed with exit code -9.'
+                addWarningBadge(
+                    id: check_exit_codes_id,
+                    text: check_exit_codes_message
+                )
+                createSummary(
+                    id: check_exit_codes_id,
+                    icon: 'warning.png',
+                    text: "<b>${check_exit_codes_message}</b>"
+                )
+            }
+        } else {
+            // The test suite didn't reported a 0 exit code.
+            // Check for -9 exit code
+            nox_exitcode_check_rc = sh(
+                label: 'check-exit-codes',
+                returnStatus: true,
+                script: """
+                grep -q 'failed with exit code -9' ${filename}
+                """
+            )
+            if ( nox_exitcode_check_rc == 0 ) {
+                retry_condition_found = true
+                conditions_found << check_exit_codes_id
+                check_exit_codes_message = 'Exit code -9 detected.'
                 addWarningBadge(
                     id: check_exit_codes_id,
                     text: check_exit_codes_message
