@@ -48,7 +48,6 @@ def call(Map options) {
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
-    def String run_tests_stage_name
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -126,10 +125,36 @@ def call(Map options) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
+    def String clone_stage_name
+    def String setup_stage_name
+    def String create_stage_name
+    def String vagrant_box_details_stage_name
+    def String converge_stage_name
+    def String run_tests_stage_name
+    def String download_stage_name
+    def String cleanup_stage_name
+    def String upload_stage_name
+
     if ( test_suite_name == 'full' ) {
+        clone_stage_name = "Clone"
+        setup_stage_name = "Setup"
+        create_stage_name = "Create VM"
+        vagrant_box_details_stage_name = "Vagrant Box Details"
+        converge_stage_name = "Converge VM"
         run_tests_stage_name = "Run Tests"
+        download_stage_name = "Download Artefacts"
+        cleanup_stage_name = "Cleanup"
+        upload_stage_name = "Upload Coverage"
     } else {
+        clone_stage_name = "Clone for ${test_suite_name.capitalize()} Tests"
+        setup_stage_name = "Setup for ${test_suite_name.capitalize()} Tests"
+        create_stage_name = "Create ${test_suite_name.capitalize()} Tests VM"
+        vagrant_box_details_stage_name = "${test_suite_name.capitalize()} Vagrant Box Details"
+        converge_stage_name = "Converge ${test_suite_name.capitalize()} Tests VM"
         run_tests_stage_name = "Run ${test_suite_name.capitalize()} Tests"
+        download_stage_name = "Download ${test_suite_name.capitalize()} Tests Artefacts"
+        cleanup_stage_name = "Cleanup ${test_suite_name.capitalize()} Tests"
+        upload_stage_name = "Upload ${test_suite_name.capitalize()} Tests Coverage"
     }
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
@@ -143,13 +168,13 @@ def call(Map options) {
             }
 
             // Checkout the repo
-            stage('Clone') {
+            stage(clone_stage_name) {
                 cleanWs notFailBuild: true
                 checkout scm
             }
 
             // Setup the kitchen required bundle
-            stage('Setup') {
+            stage(setup_stage_name) {
                 try {
                     sh '''
                     # wait at most 15 minutes for other jobs to finish taking care of bundle installs
@@ -173,9 +198,9 @@ def call(Map options) {
             }
 
             def createVM = {
-                stage('Create VM') {
+                stage(create_stage_name) {
                     if ( macos_build ) {
-                        stage('Vagrant Box Details') {
+                        stage(vagrant_box_details_stage_name) {
                             sh '''
                             bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                             '''
@@ -255,7 +280,7 @@ def call(Map options) {
                 // have at least that ammount of time to download artifacts
                 timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
                     def convergeVM = {
-                        stage('Converge VM') {
+                        stage(converge_stage_name) {
                             if ( macos_build ) {
                                 sh '''
                                 ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
@@ -306,7 +331,7 @@ def call(Map options) {
                     def List<String> conditions_found = []
                     reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
 
-                    stage('Download Artefacts') {
+                    stage(download_stage_name) {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
                             sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                         }
@@ -336,11 +361,11 @@ def call(Map options) {
                     )
                     junit 'artifacts/xml-unittests-output/*.xml'
                 } finally {
-                    stage('Cleanup') {
+                    stage(cleanup_stage_name) {
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                     }
                     if ( upload_test_coverage == true ) {
-                        stage('Upload Coverage') {
+                        stage(upload_stage_name) {
                             if ( run_full ) {
                                 def distro_strings = [
                                     distro_name,
