@@ -175,6 +175,11 @@ def call(Map options) {
             def createVM = {
                 stage('Create VM') {
                     if ( macos_build ) {
+                        stage('Vagrant Box Details') {
+                            sh '''
+                            bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                            '''
+                        }
                         try {
                             sh """
                             # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
