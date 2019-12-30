@@ -76,7 +76,7 @@ def call(List<String> conditions_found, String filename) {
             'Cannot allocate memory',
             'The paging file is too small for this operation to complete',
             'MemoryError: Unable to allocate internal buffer',
-            '^MemoryError$'
+            'MemoryError$'
         ]
         def memory_error_check_rc = sh(
             label: 'memory-error',
