@@ -5,6 +5,7 @@ def call(List<String> conditions_found, String filename) {
     def String ssh_timeout_id = 'ssh-timeout-warning'
     def String check_exit_codes_id = 'check-exit-codes'
     def String memory_error_id = 'memory-error'
+    def String daemon_failed_to_start_id = 'daemon-failed-to-start'
 
     if ( conditions_found.contains(ssh_timeout_id) == false ) {
         // Let's check for SSH Timeouts
@@ -125,6 +126,34 @@ def call(List<String> conditions_found, String filename) {
                 id: memory_error_id,
                 icon: 'warning.png',
                 text: "<b>${memory_error_message}</b>"
+            )
+        }
+
+    }
+
+    if ( conditions_found.contains(daemon_failed_to_start_id) == false ) {
+        // Let's check for test daemons failing to start
+        def daemon_failed_to_start_rc = sh(
+            label: 'daemon-failed-to-start',
+            returnStatus: true,
+            script: """
+            grep -q 'has failed to confirm running status after' ${filename}
+            """
+        )
+
+        if ( daemon_failed_to_start_rc == 0 ) {
+            // The match succeeded
+            conditions_found << daemon_failed_to_start_rc
+            retry_condition_found = true
+            def daemon_failed_to_start_msg = 'One or more test daemons failed to start'
+            addWarningBadge(
+                id: daemon_failed_to_start_id,
+                text: daemon_failed_to_start_msg
+            )
+            createSummary(
+                id: daemon_failed_to_start_id,
+                icon: 'warning.png',
+                text: "<b>${daemon_failed_to_start_msg}</b>"
             )
         }
 
