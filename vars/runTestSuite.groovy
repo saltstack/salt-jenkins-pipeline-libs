@@ -2,6 +2,7 @@
 def call(Map options) {
 
     def splits = options.get('splits', null)
+    def parallel_splits = options.get('parallel_splits', false)
     def _splits = [
         unit: [
             name: 'Unit',
@@ -34,15 +35,31 @@ def call(Map options) {
     } else {
         options.remove('splits')
         echo "Defined Test Suite Splits: ${splits}"
+        echo "Test Suite Parallel Splits: ${parallel_splits}"
+        def splits_chunks = [
+            failFast: false
+        ]
         splits.each { split ->
-            runtests_options = options.clone()
-            runtests_options['test_suite_name'] = _splits[split]['name']
-            runtests_options['nox_passthrough_opts'] = "${runtests_options['nox_passthrough_opts']} ${_splits[split]['nox_passthrough_opts']}"
-            if ( ! runtests_options.get('extra_codecov_flags', null) ) {
-                runtests_options['extra_codecov_flags'] = []
+            test_suite_name = _splits[split]['name']
+            splits_chunks[test_suite_name] = {
+                runtests_options = options.clone()
+                runtests_options['test_suite_name'] = test_suite_name
+                runtests_options['nox_passthrough_opts'] = "${runtests_options['nox_passthrough_opts']} ${_splits[split]['nox_passthrough_opts']}"
+                if ( ! runtests_options.get('extra_codecov_flags', null) ) {
+                    runtests_options['extra_codecov_flags'] = []
+                }
+                runtests_options['extra_codecov_flags'] << split
+                runTests(runtests_options)
             }
-            runtests_options['extra_codecov_flags'] << split
-            runTests(runtests_options)
+        }
+        if ( parallel_splits ) {
+            parallel splits_chunks
+        } else {
+            splits_chunks.each { entry ->
+                if ( entry.key != "failFast" ) {
+                    entry.value.call()
+                }
+            }
         }
     }
 }
