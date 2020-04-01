@@ -136,6 +136,7 @@ def call(Map options) {
     def String upload_stage_name
 
     if ( test_suite_name == 'full' ) {
+        test_suite_name_slug = test_suite_name
         clone_stage_name = "Clone"
         setup_stage_name = "Setup"
         create_stage_name = "Create VM"
@@ -146,6 +147,7 @@ def call(Map options) {
         cleanup_stage_name = "Cleanup"
         upload_stage_name = "Upload Coverage"
     } else {
+        test_suite_name_slug = "${test_suite_name.replaceAll('#', '')}"
         clone_stage_name = "Clone for ${test_suite_name.capitalize()} Tests"
         setup_stage_name = "Setup for ${test_suite_name.capitalize()} Tests"
         create_stage_name = "Create ${test_suite_name.capitalize()} Tests VM"
@@ -220,10 +222,10 @@ def call(Map options) {
                             '''
                             sh """
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
                             fi
                             if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
                             fi
                             """
                         } finally {
@@ -247,10 +249,10 @@ def call(Map options) {
                             }
                             sh """
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-create.log"
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
                             fi
                             if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-create.log"
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
                             fi
                             """
                         }
@@ -292,10 +294,10 @@ def call(Map options) {
                             }
                             sh """
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-converge.log"
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-converge.log"
                             fi
                             if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-converge.log"
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-converge.log"
                             fi
                             """
                         }
@@ -320,16 +322,16 @@ def call(Map options) {
                 try {
                     sh """
                     if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log"
+                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
                     fi
                     if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-verify.log"
+                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
                     fi
                     """
 
                     // Let's report about known problems found
                     def List<String> conditions_found = []
-                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-verify.log")
+                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
 
                     stage(download_stage_name) {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
@@ -337,10 +339,10 @@ def call(Map options) {
                         }
                         sh """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name}-download.log"
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
                         fi
                         if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name}-download.log"
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
                         fi
                         """
                     }
