@@ -53,6 +53,7 @@ def call(Map options) {
                                             sh """
                                             pyenv install 3.6.8 || echo "We already have this python."
                                             pyenv local 3.6.8
+                                            pip install -U pip || true
                                             pip freeze | grep -s invoke || pip install -r os-images/requirements/py3.6/base.txt
                                             inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-branch=${golden_images_branch} --salt-pr=${env.CHANGE_ID}
                                             """
@@ -91,6 +92,7 @@ def call(Map options) {
                                                 sh """
                                                 pyenv install 3.6.8 || echo "We already have this python."
                                                 pyenv local 3.6.8
+                                                pip install -U pip || true
                                                 pip freeze | grep -s invoke || pip install -r os-images/requirements/py3.6/base.txt
                                                 inv build-osx --staging --distro-version=${distro_version} --salt-branch=${golden_images_branch} --salt-pr=${env.CHANGE_ID}
                                                 """
@@ -270,6 +272,7 @@ def call(Map options) {
                                             sh """
                                             pyenv install 3.6.8 || echo "We already have this python."
                                             pyenv local 3.6.8
+                                            pip install -U pip || true
                                             pip freeze | grep -s invoke || pip install -r requirements/py3.6/base.txt
                                             inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
                                             """
@@ -421,6 +424,7 @@ def call(Map options) {
                                     sh """
                                     pyenv install 3.6.8 || echo "We already have this python."
                                     pyenv local 3.6.8
+                                    pip install -U pip || true
                                     pip freeze | grep -s invoke || pip install -r requirements/py3.6/base.txt
                                     inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
                                     """
