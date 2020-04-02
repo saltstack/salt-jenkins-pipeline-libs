@@ -312,9 +312,11 @@ def call(Map options) {
                         convergeVM.call()
                     }
 
-                    stage(run_tests_stage_name) {
-                        withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    timeout(activity: true, time: 30, unit: 'MINUTES') {
+                        stage(run_tests_stage_name) {
+                            withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                            }
                         }
                     }
                 }
