@@ -35,6 +35,7 @@ def call(Map options) {
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
+    def Integer inactivity_timeout_minutes = options.get('inactivity_timeout_minutes', 30)
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
@@ -312,12 +313,30 @@ def call(Map options) {
                         convergeVM.call()
                     }
 
-                    timeout(activity: true, time: 30, unit: 'MINUTES') {
-                        stage(run_tests_stage_name) {
-                            withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    try {
+                        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
+                            stage(run_tests_stage_name) {
+                                withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                }
                             }
                         }
+                    } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
+                        def cause = inactivity_exception.causes.get(0)
+                        if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
+                            def timeout_id = "inactivity-timeout"
+                            def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
+                            addWarningBadge(
+                                id: timeout_id,
+                                text: timeout_message
+                            )
+                            createSummary(
+                                id: timeout_id,
+                                icon: 'warning.png',
+                                text: "<b>${timeout_message}</b>"
+                            )
+                        }
+                        throw inactivity_exception
                     }
                 }
             } finally {
