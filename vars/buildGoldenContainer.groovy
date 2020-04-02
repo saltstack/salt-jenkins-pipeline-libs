@@ -46,9 +46,21 @@ def call(Map options) {
                             }
 
                             sh """
+                            if [ ! -f bin/packer ]; then
+                                mkdir -p bin
+                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                unzip -d bin packer_1.4.5_linux_amd64.zip
+                                export PATH="\${PWD}/bin:\${PATH}"
+                            fi
                             pyenv install 3.6.8 || echo "We already have this python."
                             pyenv local 3.6.8
-                            pip freeze | grep -s invoke || pip install -r os-images/requirements/py3.6/base.txt
+                            if [ ! -d venv ]; then
+                                virtualenv venv
+                            fi
+                            . venv/bin/activate
+                            pip install -r os-images/requirements/py3.6/base.txt
                             inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-branch=${golden_images_branch} --salt-pr=${env.CHANGE_ID}
                             """
                             image_created = true
@@ -181,9 +193,21 @@ def call(Map options) {
                                     checkout scm
                                     withAWS(credentials: 'os-imager-aws-creds', region: "${ec2_region}") {
                                         sh """
+                                        if [ ! -f bin/packer ]; then
+                                            mkdir -p bin
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                            unzip -d bin packer_1.4.5_linux_amd64.zip
+                                            export PATH="\${PWD}/bin:\${PATH}"
+                                        fi
                                         pyenv install 3.6.8 || echo "We already have this python."
                                         pyenv local 3.6.8
-                                        pip freeze | grep -s invoke || pip install -r requirements/py3.6/base.txt
+                                        if [ ! -d venv ]; then
+                                            virtualenv venv
+                                        fi
+                                        . venv/bin/activate
+                                        pip install -r os-images/requirements/py3.6/base.txt
                                         inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
                                         """
                                     }
@@ -241,9 +265,21 @@ def call(Map options) {
                             checkout scm
                             withAWS(credentials: 'os-imager-aws-creds', region: "${ec2_region}") {
                                 sh """
+                                if [ ! -f bin/packer ]; then
+                                    mkdir -p bin
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                    unzip -d bin packer_1.4.5_linux_amd64.zip
+                                    export PATH="\${PWD}/bin:\${PATH}"
+                                fi
                                 pyenv install 3.6.8 || echo "We already have this python."
                                 pyenv local 3.6.8
-                                pip freeze | grep -s invoke || pip install -r requirements/py3.6/base.txt
+                                if [ ! -d venv ]; then
+                                    virtualenv venv
+                                fi
+                                . venv/bin/activate
+                                pip install -r os-images/requirements/py3.6/base.txt
                                 inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
                                 """
                             }
