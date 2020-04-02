@@ -67,9 +67,26 @@ def call(Map options) {
         }
     }
 
+    // In case we're testing golden images
+    def Boolean golden_images_build = false
+    def String ami_image_id = options.get('ami_image_id', '')
+    def String vagrant_box = options.get('vagrant_box', '')
+    def String vagrant_box_version = options.get('vagrant_box_version', '')
+    def String vagrant_box_provider = options.get('vagrant_box_provider', 'parallels')
+    def Boolean delete_vagrant_box = true
+
+    if ( ami_image_id != '') {
+        golden_images_build = true
+    }
+
     def Boolean macos_build = false
     if ( distro_name == 'macosx' ) {
         macos_build = true
+        if ( vagrant_box == '' ) {
+            delete_vagrant_box = false
+        } else {
+            golden_images_build = true
+        }
     }
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
@@ -99,6 +116,18 @@ def call(Map options) {
     Computed Machine Hostname: ${vm_hostname}
     """.stripIndent()
 
+    if ( ami_image_id != '' ) {
+        echo """\
+        Amazon AMI: ${ami_image_id}
+        """.stripIndent()
+    }
+    if ( vagrant_box != '' ) {
+        echo """\
+        Vagrant Box: ${vagrant_box}
+        Vagrant Box Version: ${vagrant_box_version}
+        """.stripIndent()
+    }
+
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
         "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
@@ -123,6 +152,11 @@ def call(Map options) {
 
     if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
+    }
+
+    if ( vagrant_box != '' ) {
+        environ << "VAGRANT_BOX=${vagrant_box}"
+        environ << "VAGRANT_BOX_VERSION=${vagrant_box_version}"
     }
 
     def String clone_stage_name
@@ -172,7 +206,29 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
-                checkout scm
+                if ( golden_images_build == false ) {
+                    checkout scm
+                } else {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [
+                            [name: "master"]
+                        ],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [
+                            [
+                                $class: 'CloneOption',
+                                noTags: false,
+                                reference: '',
+                                shallow: true
+                            ]
+                        ],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [
+                            [url: "https://github.com/saltstack/salt.git"]
+                        ]
+                    ])
+                }
             }
 
             // Setup the kitchen required bundle
@@ -189,8 +245,25 @@ def call(Map options) {
                     '''
                     if ( macos_build ) {
                         sh 'bundle install --with vagrant --without ec2 windows docker'
+                        if ( golden_images_build ) {
+                            // No coverage
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            verifier:
+                              coverage: false
+                            """.stripIndent()
+                        }
                     } else {
                         sh 'bundle install --with ec2 windows --without docker vagrant'
+                        if ( golden_images_build ) {
+                            // Make sure we don't get any promoted images
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            driver:
+                              image_search:
+                                description: 'CI-STAGING *'
+                            verifier:
+                              coverage: false
+                            """.stripIndent()
+                        }
                     }
                 } finally {
                     sh '''
@@ -234,6 +307,28 @@ def call(Map options) {
                             """
                         }
                     } else {
+                        if ( golden_images_build ) {
+                            stage('Discover AMI') {
+                                command_output = sh returnStdout: true, script:
+                                    '''
+                                    bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:' | awk '{ print $2 }'
+                                    '''
+                                image_id = command_output.trim()
+                                if ( image_id != '' ) {
+                                    addInfoBadge id: 'discovered-ami-badge', text: "Discovered AMI ${image_id} for this running instance"
+                                    createSummary(icon: "/images/48x48/attribute.png", text: "Discovered AMI: ${image_id}")
+                                } else {
+                                    addWarningBadge id: 'discovered-ami-badge', text: "No AMI discovered to promote"
+                                    createSummary(icon: "/images/48x48/warning.png", text: "No AMI discovered to promote")
+                                }
+                                command_output = sh returnStdout: true, script:
+                                    '''
+                                    grep 'region:' $SALT_KITCHEN_DRIVER | awk '{ print $2 }'
+                                    '''
+                                ec2_region = command_output.trim()
+                                println "Discovered EC2 Region: ${ec2_region}"
+                            }
+                        }
                         retry(3) {
                             if ( use_spot_instances ) {
                                 sh '''
@@ -366,7 +461,28 @@ def call(Map options) {
                     junit 'artifacts/xml-unittests-output/*.xml'
                 } finally {
                     stage(cleanup_stage_name) {
-                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                        try {
+                            sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                        } finally {
+                            if ( macos_build ) {
+                                try {
+                                    if ( delete_vagrant_box ) {
+                                        sh """
+                                        vagrant box remove --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                                        """
+                                    }
+                                } catch (Exception delete_vagrant_box_error) {
+                                    println "Failed to delete vagrant box: ${delete_vagrant_box_error}"
+                                }
+                                try {
+                                    sh """
+                                    vagrant box prune --keep-active-boxes --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                                    """
+                                } catch (Exception prune_vagrant_box_error) {
+                                    println "Failed to prune vagrant box: ${prune_vagrant_box_error}"
+                                }
+                            }
+                        }
                     }
                     if ( upload_test_coverage == true ) {
                         stage(upload_stage_name) {
