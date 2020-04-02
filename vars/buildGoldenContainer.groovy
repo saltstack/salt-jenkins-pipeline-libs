@@ -46,7 +46,7 @@ def call(Map options) {
                             }
 
                             sh """
-                            if [ ! -f bin/packer ]; then
+                            if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
                                 mkdir -p bin
                                 curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
                                 curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
@@ -193,7 +193,7 @@ def call(Map options) {
                                     checkout scm
                                     withAWS(credentials: 'os-imager-aws-creds', region: "${ec2_region}") {
                                         sh """
-                                        if [ ! -f bin/packer ]; then
+                                        if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
                                             mkdir -p bin
                                             curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
                                             curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
@@ -265,7 +265,7 @@ def call(Map options) {
                             checkout scm
                             withAWS(credentials: 'os-imager-aws-creds', region: "${ec2_region}") {
                                 sh """
-                                if [ ! -f bin/packer ]; then
+                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
                                     mkdir -p bin
                                     curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
                                     curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
