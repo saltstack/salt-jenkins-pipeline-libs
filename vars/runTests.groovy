@@ -148,7 +148,7 @@ def call(Map options) {
         cleanup_stage_name = "Cleanup"
         upload_stage_name = "Upload Coverage"
     } else {
-        test_suite_name_slug = "${test_suite_name.replaceAll('#', '')}"
+        test_suite_name_slug = "${test_suite_name.replaceAll('#', '').replaceAll(' ', '-')}"
         clone_stage_name = "Clone for ${test_suite_name.capitalize()} Tests"
         setup_stage_name = "Setup for ${test_suite_name.capitalize()} Tests"
         create_stage_name = "Create ${test_suite_name.capitalize()} Tests VM"
