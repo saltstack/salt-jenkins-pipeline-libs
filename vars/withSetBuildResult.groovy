@@ -9,7 +9,11 @@ def call(String slack_channel = null, Closure body=null) {
         echo "Setting currentBuild.result to ${currentBuild.result}"
         throw ie
     } catch(e) {
-        currentBuild.result = 'FAILURE'
+        if (e.getMessage() == 'Aborting since this is a Documentation PR') {
+            currentBuild.result = 'ABORTED'
+        } else {
+            currentBuild.result = 'FAILURE'
+        }
         echo "Setting currentBuild.result to ${currentBuild.result}"
         throw e
     } finally {

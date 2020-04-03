@@ -36,6 +36,7 @@ def call(Map options) {
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
     def Boolean use_spot_instances = options.get('use_spot_instances', false)
+    def Boolean run_on_docs_pr = options.get('run_on_docs_pr', false)
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
     def String notify_slack_channel = options.get('notify_slack_channel', '')
@@ -159,6 +160,22 @@ def call(Map options) {
 
     wrappedNode(jenkins_slave_label, global_timeout, notify_slack_channel) {
         withEnv(environ) {
+
+            if (env.CHANGE_ID && !run_on_docs_pr) {
+                try {
+                    sh '''
+                    # abort if it's a documentation pr and this isn't a documentation job
+                    # if we've run out of api limit, run the job anyway
+                    GITHUB_LABELS="$(curl -Ss https://api.github.com/repos/saltstack/salt/issues/${CHANGE_ID}/labels)"
+                    if ! echo "${GITHUB_LABELS}"|grep -q 'API rate limit exceeded' && echo "${GITHUB_LABELS}"|jq -r '.[].name'|grep -q '^Documentation$';
+                    then
+                        false
+                    fi
+                    '''
+                } catch (e) {
+                    throw new Exception('Aborting since this is a Documentation PR')
+                }
+            }
 
             if ( macos_build ) {
                 // Cleanup old VMs
