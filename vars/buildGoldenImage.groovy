@@ -3,7 +3,6 @@ def call(Map options) {
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
-    def String golden_images_branch = options.get('golden_images_branch', 'master')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
     def Boolean supports_py2 = options.get('supports_py2', true)
@@ -67,18 +66,18 @@ def call(Map options) {
                                         fi
                                         . venv/bin/activate
                                         pip install -r os-images/requirements/py3.6/base.txt
-                                        inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-branch=${golden_images_branch} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
+                                        inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
                                         """
                                     }
                                     ami_image_id = sh (
                                         script: """
-                                        cat ${golden_images_branch}-manifest.json|jq -r ".builds[].artifact_id"|cut -f2 -d:
+                                        cat manifest.json|jq -r ".builds[].artifact_id"|cut -f2 -d:
                                         """,
                                         returnStdout: true
                                         ).trim()
                                     ami_name_filter = sh (
                                         script: """
-                                        cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.ami_name"
+                                        cat manifest.json|jq -r ".builds[].custom_data.ami_name"
                                         """,
                                         returnStdout: true
                                         ).trim()
@@ -116,7 +115,7 @@ def call(Map options) {
                                                 fi
                                                 . venv/bin/activate
                                                 pip install -r os-images/requirements/py3.6/base.txt
-                                                inv build-osx --staging --distro-version=${distro_version} --salt-branch=${golden_images_branch} --salt-pr=${env.CHANGE_ID}
+                                                inv build-osx --staging --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
                                                 """
                                             }
                                         }
@@ -126,31 +125,31 @@ def call(Map options) {
                                     ]) {
                                         vagrant_box_name = sh (
                                             script: """
-                                            cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.box_name"
+                                            cat manifest.json|jq -r ".builds[].custom_data.box_name"
                                             """,
                                             returnStdout: true
                                             ).trim()
                                         vagrant_box_version = sh (
                                             script: """
-                                            cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.box_version"
+                                            cat manifest.json|jq -r ".builds[].custom_data.box_version"
                                             """,
                                             returnStdout: true
                                             ).trim()
                                         vagrant_box_provider = sh (
                                             script: """
-                                            cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.box_provider"
+                                            cat manifest.json|jq -r ".builds[].custom_data.box_provider"
                                             """,
                                             returnStdout: true
                                             ).trim()
                                         vagrant_box_artifactory_repo = sh (
                                             script: """
-                                            cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.box_artifactory_repo"
+                                            cat manifest.json|jq -r ".builds[].custom_data.box_artifactory_repo"
                                             """,
                                             returnStdout: true
                                             ).trim()
                                         vagrant_box_name_testing = sh (
                                             script: """
-                                            cat ${golden_images_branch}-manifest.json|jq -r ".builds[].custom_data.box_name_testing"
+                                            cat manifest.json|jq -r ".builds[].custom_data.box_name_testing"
                                             """,
                                             returnStdout: true
                                             ).trim()
