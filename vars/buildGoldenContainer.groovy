@@ -4,33 +4,25 @@ def call(Map options) {
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
-    def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
+    def String jenkins_slave_label = options.get('jenkins_slave_label', 'docker-slave')
     def Boolean supports_py2 = options.get('supports_py2', true)
     def Boolean supports_py3 = options.get('supports_py3', true)
-    def String ec2_region = options.get('ec2_region', 'us-west-2')
+    def String nox_passthrough_opts = options.get('nox_passthrough_opts', null)
 
-    // AWS
-    def String ami_image_id
-    def String ami_name_filter
+    if ( nox_passthrough_opts == null ) {
+        nox_passthrough_opts = ""
+    }
+    // Docker
+    def String container_name
 
-    // Vagrant
-    def String vagrant_box_name
-    def String vagrant_box_version
-    def String vagrant_box_provider
-    def String vagrant_box_artifactory_repo
-    def String vagrant_box_name_testing
-
-    def Boolean image_created = false
+    def Boolean container_created = false
     def Boolean tests_passed = false
     def Boolean is_pr_build = isPRBuild()
 
-    def Boolean macos_build = false
-    if ( distro_name == 'macosx' ) {
-        macos_build = true
-    }
-
     // Enforce build concurrency
     enforceBuildConcurrency(options)
+    // Now that we have enforced build concurrency, let's disable it for when calling runTests
+    options['concurrent_builds'] = -1
 
     stage('Build Container') {
         ansiColor('xterm') {
@@ -43,34 +35,41 @@ def call(Map options) {
                             stage('Clone') {
                                 checkout scm
                             }
-
-                            sh """
-                            if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                mkdir -p bin
-                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                unzip -d bin packer_1.4.5_linux_amd64.zip
-                                export PATH="\${PWD}/bin:\${PATH}"
-                            fi
-                            pyenv install 3.6.8 || echo "We already have this python."
-                            pyenv local 3.6.8
-                            if [ ! -d venv ]; then
-                                virtualenv venv
-                            fi
-                            . venv/bin/activate
-                            pip install -r os-images/requirements/py3.6/base.txt
-                            inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
-                            """
-                            image_created = true
-                            ami_built_msg = "Built AMI ${ami_image_id}(${ami_name_filter})"
+                            withDockerHubCredentials('docker-hub-credentials') {
+                                sh """
+                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
+                                    mkdir -p bin
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                    unzip -d bin packer_1.4.5_linux_amd64.zip
+                                    export PATH="\${PWD}/bin:\${PATH}"
+                                fi
+                                pyenv install 3.6.8 || echo "We already have this python."
+                                pyenv local 3.6.8
+                                if [ ! -d venv ]; then
+                                    virtualenv venv
+                                fi
+                                . venv/bin/activate
+                                pip install -r os-images/requirements/py3.6/base.txt
+                                inv build-docker --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                """
+                            }
+                            container_name = sh (
+                                script: """
+                                cat manifest.json|jq -r ".builds[].custom_data.container_name"
+                                """,
+                                returnStdout: true
+                                ).trim()
+                            container_created = true
+                            container_built_msg = "Built Container ${container_name}"
                             addInfoBadge(
-                                id: 'build-ami-badge',
-                                text: ami_built_msg
+                                id: 'build-container-badge',
+                                text: container_built_msg
                             )
                             createSummary(
                                 icon: "/images/48x48/attribute.png",
-                                text: ami_built_msg
+                                text: container_built_msg
                             )
                         }
                     }
@@ -81,21 +80,18 @@ def call(Map options) {
         }
     }
 
-    if ( macos_build == false ) {
-        options['ami_image_id'] = ami_image_id
-    } else {
-        options['vagrant_box'] = "${vagrant_box_name_testing}"
-        options['vagrant_box_version'] = "${vagrant_box_version}"
-        options['vagrant_box_provider'] = "${vagrant_box_provider}"
-    }
+    options['container_name'] = container_name
     options['upload_test_coverage'] = false
+    options['kitchen_driver_file'] = '/var/jenkins/workspace/nox-driver-docker.yml'
+    options['kitchen_platforms_file'] = '/var/jenkins/workspace/nox-platforms-docker.yml'
+    options['nox_passthrough_opts'] = "${nox_passthrough_opts} tests/unit"
 
     def Boolean run_tests = true
     try {
-        if ( image_created == true ) {
+        if ( container_created == true ) {
             try {
                 if ( is_pr_build == false ) {
-                    message = "${distro_name}-${distro_version} AMI `${ami_image_id}` is built. Skip tests?"
+                    message = "${distro_name}-${distro_version} Docker Container `${container_name}` is built. Skip tests?"
                     try {
                         slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
                         slackSend(
@@ -161,10 +157,10 @@ def call(Map options) {
                 }
             } finally {
                 if ( is_pr_build == false ) {
-                    stage('Promote AMI') {
+                    stage('Promote Docker Container') {
                         try {
                             try {
-                                message = "${distro_name}-${distro_version} AMI `${ami_image_id}` is waiting for CI duties promotion."
+                                message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
                                 if (tests_passed) {
                                     message = "${message}\nTests Passed"
                                 } else {
@@ -178,73 +174,75 @@ def call(Map options) {
                             } catch (Exception e2) {
                                 sh "echo Failed to send the Slack notification: ${e2}"
                             }
-                            message = "${distro_name}-${distro_version} AMI `${ami_image_id}` is waiting for CI duties promotion."
+                            message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
                             if (tests_passed) {
                                 message = "${message}\nTests Passed."
                             } else {
                                 message = "${message}\nTests Failed. Take extra care before promoting."
                             }
                             timeout(time: 4, unit: 'HOURS') {
-                                input id: 'promote-ami', message: "\n\n\n${message}\n\n\nPromote AMI ${ami_image_id}?\n", ok: 'Promote!'
+                                input id: 'promote-container', message: "\n\n\n${message}\n\n\nPromote Docker Container ${container_name}?\n", ok: 'Promote!'
                             }
                             node(jenkins_slave_label) {
                                 try {
                                     checkout scm
-                                    sh """
-                                    if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                        mkdir -p bin
-                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                        sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                        unzip -d bin packer_1.4.5_linux_amd64.zip
-                                        export PATH="\${PWD}/bin:\${PATH}"
-                                    fi
-                                    pyenv install 3.6.8 || echo "We already have this python."
-                                    pyenv local 3.6.8
-                                    if [ ! -d venv ]; then
-                                        virtualenv venv
-                                    fi
-                                    . venv/bin/activate
-                                    pip install -r os-images/requirements/py3.6/base.txt
-                                    inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
-                                    """
+                                    withDockerHubCredentials('docker-hub-credentials') {
+                                        sh """
+                                        if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
+                                            mkdir -p bin
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                            unzip -d bin packer_1.4.5_linux_amd64.zip
+                                            export PATH="\${PWD}/bin:\${PATH}"
+                                        fi
+                                        pyenv install 3.6.8 || echo "We already have this python."
+                                        pyenv local 3.6.8
+                                        if [ ! -d venv ]; then
+                                            virtualenv venv
+                                        fi
+                                        . venv/bin/activate
+                                        pip install -r os-images/requirements/py3.6/base.txt
+                                        inv promote-docker --container-name=${container_name} --assume-yes
+                                        """
+                                    }
                                 } finally {
                                     cleanWs notFailBuild: true
                                 }
                             }
-                            ami_built_msg = "AMI ${ami_image_id}(${ami_name_filter}) was promoted for CI duties!"
+                            container_built_msg = "Docker Container ${container_name} was promoted for CI duties!"
                             addBadge(
-                                id: 'promoted-ami-badge',
+                                id: 'promoted-container-badge',
                                 icon: "/static/8361d0d6/images/16x16/accept.png",
-                                text: ami_built_msg
+                                text: container_built_msg
                             )
                             createSummary(
                                 icon: "/images/48x48/accept.png",
-                                text: ami_built_msg
+                                text: container_built_msg
                             )
                             try {
                                 slackSend(
                                     channel: "#golden-images",
                                     color: '#00FF00',
-                                    message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                    message: "${distro_name}-${distro_version} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                             } catch (Exception e3) {
                                 sh "echo Failed to send the Slack notification: ${e3}"
                             }
                         } catch (Exception e4) {
-                            println "AMI ${ami_image_id} was NOT promoted for CI duties! Reason: ${e4}"
+                            println "Docker Container ${container_name} was NOT promoted for CI duties! Reason: ${e4}"
                             addWarningBadge(
-                                id: 'promoted-ami-badge',
-                                text: "AMI ${ami_image_id}(${ami_name_filter}) was NOT promoted for CI duties!"
+                                id: 'promoted-container-badge',
+                                text: "Docker Container ${container_name} was NOT promoted for CI duties!"
                             )
                             createSummary(
                                 icon: "/images/48x48/warning.png",
-                                text: "AMI ${ami_image_id}(${ami_name_filter}) was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
+                                text: "Docker Container ${container_name} was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
                             )
                             try {
                                 slackSend(
                                     channel: "#golden-images",
                                     color: '#FF0000',
-                                    message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                    message: "${distro_name}-${distro_version} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                             } catch (Exception e5) {
                                 sh "echo Failed to send the Slack notification: ${e5}"
                             }
@@ -254,30 +252,32 @@ def call(Map options) {
             }
         }
     } finally {
-        stage('Cleanup Old AMIs') {
-            if (ami_name_filter) {
+        stage('Cleanup Old Docker Containers') {
+            if (container_name) {
                 node(jenkins_slave_label) {
                     try {
                         timeout(time: 10, unit: 'MINUTES') {
                             checkout scm
-                            sh """
-                            if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                mkdir -p bin
-                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                unzip -d bin packer_1.4.5_linux_amd64.zip
-                                export PATH="\${PWD}/bin:\${PATH}"
-                            fi
-                            pyenv install 3.6.8 || echo "We already have this python."
-                            pyenv local 3.6.8
-                            if [ ! -d venv ]; then
-                                virtualenv venv
-                            fi
-                            . venv/bin/activate
-                            pip install -r os-images/requirements/py3.6/base.txt
-                            inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
-                            """
+                            withDockerHubCredentials('docker-hub-credentials') {
+                                sh """
+                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
+                                    mkdir -p bin
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                    unzip -d bin packer_1.4.5_linux_amd64.zip
+                                    export PATH="\${PWD}/bin:\${PATH}"
+                                fi
+                                pyenv install 3.6.8 || echo "We already have this python."
+                                pyenv local 3.6.8
+                                if [ ! -d venv ]; then
+                                    virtualenv venv
+                                fi
+                                . venv/bin/activate
+                                pip install -r os-images/requirements/py3.6/base.txt
+                                inv cleanup-docker --container-name='${container_name}' --assume-yes
+                                """
+                            }
                         }
                     } finally {
                         cleanWs notFailBuild: true
