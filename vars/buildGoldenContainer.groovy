@@ -80,7 +80,7 @@ def call(Map options) {
         }
     }
 
-    options['container_name'] = container_name
+    options['docker_image_name'] = container_name
     options['upload_test_coverage'] = false
     options['kitchen_driver_file'] = '/var/jenkins/workspace/nox-driver-docker.yml'
     options['kitchen_platforms_file'] = '/var/jenkins/workspace/nox-platforms-docker.yml'

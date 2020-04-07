@@ -72,20 +72,31 @@ def call(Map options) {
     def String vagrant_box = options.get('vagrant_box', '')
     def String vagrant_box_version = options.get('vagrant_box_version', '')
     def String vagrant_box_provider = options.get('vagrant_box_provider', 'parallels')
+    def String docker_image_name = options.get('docker_image_name', '')
     def Boolean delete_vagrant_box = true
-
-    if ( ami_image_id != '') {
-        golden_images_build = true
-    }
+    def Boolean delete_docker_image = true
 
     def Boolean macos_build = false
+    def Boolean docker_build = false
+
     if ( distro_name == 'macosx' ) {
         macos_build = true
-        if ( vagrant_box == '' ) {
+    }
+
+    if ( ami_image_id != '' ) {
+        golden_images_build = true
+    } else if ( vagrant_box != '' ) {
+        golden_images_build = true
+    } else if ( docker_image_name != '' ) {
+        docker_build = true
+        golden_images_build = true
+        delete_docker_image = true
+    } else {
+        golden_images_build = false
+        if ( macos_build ) {
             delete_vagrant_box = false
-        } else {
-            golden_images_build = true
         }
+        delete_docker_image = false
     }
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
@@ -125,6 +136,11 @@ def call(Map options) {
         Vagrant Box Version: ${vagrant_box_version}
         """.stripIndent()
     }
+    if ( docker_image_name != '' ) {
+        echo """\
+        Docker Image: ${docker_image_name}
+        """.stripIndent()
+    }
 
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
@@ -142,18 +158,16 @@ def call(Map options) {
     ]
 
     if ( ami_image_id != '' ) {
-        echo """\
-        Amazon AMI: ${ami_image_id}
-        """.stripIndent()
-    }
-
-    if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
     if ( vagrant_box != '' ) {
         environ << "VAGRANT_BOX=${vagrant_box}"
         environ << "VAGRANT_BOX_VERSION=${vagrant_box_version}"
+    }
+
+    if ( docker_image_name != '' ) {
+        environ << "SALT_DOCKER_IMAGE=${docker_image_name}"
     }
 
     def String clone_stage_name
@@ -232,6 +246,8 @@ def call(Map options) {
             stage(setup_stage_name) {
                 try {
                     sh '''
+                    set -e
+                    set -x
                     # wait at most 15 minutes for other jobs to finish taking care of bundle installs
                     while find /tmp/lock_bundle -mmin -15 | grep -q /tmp/lock_bundle
                     do
@@ -241,7 +257,13 @@ def call(Map options) {
                     touch /tmp/lock_bundle
                     '''
                     if ( macos_build ) {
-                        sh 'bundle install --with vagrant --without ec2 windows docker'
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with vagrant
+                        bundle config --local without ec2 windows docker
+                        bundle install
+                        """
                         if ( golden_images_build ) {
                             // No coverage
                             writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
@@ -249,8 +271,155 @@ def call(Map options) {
                               coverage: false
                             """.stripIndent()
                         }
+                    } else if ( docker_build ) {
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with docker
+                        bundle config --local without ec2 vagrant windows
+                        bundle install
+                        """
+                        if ( golden_images_build ) {
+                            // No coverage
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            driver:
+                              name: docker
+                              use_sudo: false
+                              hostname: salt
+                              privileged: true
+                              username: kitchen
+                              volume:
+                                - /var/run/docker.sock:/docker.sock
+                              cap_add:
+                                - sys_admin
+                              disable_upstart: false
+                              provision_command:
+                                - systemctl enable sshd
+                                - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              driver_config:
+                                run_command: /usr/lib/systemd/systemd
+                                run_options: --entrypoint=/usr/lib/systemd/systemd
+                            transport:
+                              name: rsync
+
+                            provisioner:
+                              name: salt_solo
+                              salt_version: false
+                              salt_install: false
+                              run_salt_call: false
+                              install_after_init_environment: false
+                              log_level: info
+                              sudo: true
+                              require_chef: false
+                              retry_on_exit_code:
+                                - 139
+                              max_retries: 2
+                              salt_copy_filter:
+                                - __pycache__
+                                - '*.pyc'
+                                - .bundle
+                                - .tox
+                                - .nox
+                                - .kitchen
+                                - artifacts
+                                - Gemfile.lock
+                              # Remote states needs to be defined and under it testingdir or else
+                              # the local directory isn't copied over to the VM's/Containers that
+                              # get spun up.
+                              remote_states:
+                                testingdir: /testing
+                              state_top: {}
+                              pillars: {}
+
+                            platforms:
+                              - name: arch
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
+                              - name: amazon-2
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
+                              - name: centos-7
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-7' %>
+                              - name: centos-8
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
+                              - name: debian-9
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: debian-10
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: fedora-30
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-30' %>
+                              - name: fedora-31
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-31' %>
+                              - name: fedora-32
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32' %>
+                              - name: opensuse-15
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
+                              - name: ubuntu-16.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: ubuntu-18.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1804' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: ubuntu-20.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+
+                            suites:
+                              - name: py2
+                              - name: py3
+
+                            verifier:
+                              name: nox
+                              run_destructive: true
+                              coverage: false
+                              junitxml: true
+                              sudo: true
+                              transport: zeromq
+                              sysinfo: true
+                              sys_stats: true
+                            """.stripIndent()
+                        }
                     } else {
-                        sh 'bundle install --with ec2 windows --without docker vagrant'
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with ec2 windows
+                        bundle config --local without vagrant docker
+                        bundle install
+                        """
                         if ( golden_images_build ) {
                             // Make sure we don't get any promoted images
                             writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
@@ -274,11 +443,15 @@ def call(Map options) {
                     if ( macos_build ) {
                         stage(vagrant_box_details_stage_name) {
                             sh '''
+                            set -e
+                            set -x
                             bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                             '''
                         }
                         try {
                             sh """
+                            set -e
+                            set -x
                             # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
                             while find /tmp/lock_${distro_version} -mmin -120 | grep -q /tmp/lock_${distro_version}
                             do
@@ -288,9 +461,13 @@ def call(Map options) {
                             touch /tmp/lock_${distro_version}
                             """
                             sh '''
+                            set -e
+                            set -x
                             bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                             '''
                             sh """
+                            set -e
+                            set -x
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                                 mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
                             fi
@@ -300,9 +477,28 @@ def call(Map options) {
                             """
                         } finally {
                             sh """
+                            set -e
+                            set -x
                             rm -f /tmp/lock_${distro_version}
                             """
                         }
+                    } else if ( docker_build ) {
+                        sh '''
+                        set -e
+                        set -x
+                        t=$(shuf -i 15-45 -n 1); echo "Sleeping $t seconds"; sleep $t
+                        ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                        '''
+                        sh """
+                        set -e
+                        set -x
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                        fi
+                        if [ -s ".kitchen/logs/kitchen.log" ]; then
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
+                        fi
+                        """
                     } else {
                         if ( golden_images_build ) {
                             stage('Discover AMI') {
@@ -329,17 +525,23 @@ def call(Map options) {
                         retry(3) {
                             if ( use_spot_instances ) {
                                 sh '''
+                                set -e
+                                set -x
                                 cp -f ~/workspace/spot.yml .kitchen.local.yml
                                 t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                                 bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                                 '''
                             } else {
                                 sh '''
+                                set -e
+                                set -x
                                 t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                                 bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                                 '''
                             }
                             sh """
+                            set -e
+                            set -x
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                                 mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
                             fi
@@ -350,6 +552,8 @@ def call(Map options) {
                         }
                         try {
                             sh '''
+                            set -e
+                            set -x
                             bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
                             grep 'image_id:' kitchen-diagnose-info.txt
                             grep 'instance_type:' -A5 kitchen-diagnose-info.txt
@@ -358,6 +562,8 @@ def call(Map options) {
                             println "Failed to get the kitchen diagnose information: ${kitchen_diagnose_error}"
                         } finally {
                             sh '''
+                            set -e
+                            set -x
                             rm -f kitchen-diagnose-info.txt
                             rm -f .kitchen.local.yml
                             '''
@@ -377,14 +583,20 @@ def call(Map options) {
                         stage(converge_stage_name) {
                             if ( macos_build ) {
                                 sh '''
+                                set -e
+                                set -x
                                 ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                                 '''
                             } else {
                                 sh '''
+                                set -e
+                                set -x
                                 ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                                 '''
                             }
                             sh """
+                            set -e
+                            set -x
                             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                                 mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-converge.log"
                             fi
@@ -408,7 +620,11 @@ def call(Map options) {
                         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
                             stage(run_tests_stage_name) {
                                 withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                    sh '''
+                                    set -e
+                                    set -x
+                                    bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                    '''
                                 }
                             }
                         }
@@ -433,6 +649,8 @@ def call(Map options) {
             } finally {
                 try {
                     sh """
+                    set -e
+                    set -x
                     if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                         mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
                     fi
@@ -447,9 +665,15 @@ def call(Map options) {
 
                     stage(download_stage_name) {
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
+                            sh '''
+                            set -e
+                            set -x
+                            bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0
+                            '''
                         }
                         sh """
+                        set -e
+                        set -x
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
                         fi
@@ -477,12 +701,18 @@ def call(Map options) {
                 } finally {
                     stage(cleanup_stage_name) {
                         try {
-                            sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                            sh '''
+                            set -e
+                            set -x
+                            bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                            '''
                         } finally {
                             if ( macos_build ) {
                                 try {
                                     if ( delete_vagrant_box ) {
                                         sh """
+                                        set -e
+                                        set -x
                                         vagrant box remove --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
                                         """
                                     }
@@ -491,10 +721,20 @@ def call(Map options) {
                                 }
                                 try {
                                     sh """
+                                    set -e
+                                    set -x
                                     vagrant box prune --keep-active-boxes --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
                                     """
                                 } catch (Exception prune_vagrant_box_error) {
                                     println "Failed to prune vagrant box: ${prune_vagrant_box_error}"
+                                }
+                            } else if ( docker_build ) {
+                                if ( delete_docker_image ) {
+                                    sh """
+                                    set -e
+                                    set -x
+                                    docker rmi -f ${docker_image_name} || true
+                                    """
                                 }
                             }
                         }
