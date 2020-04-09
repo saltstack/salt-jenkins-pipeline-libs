@@ -84,7 +84,7 @@ def call(Map options) {
     options['upload_test_coverage'] = false
     options['kitchen_driver_file'] = '/var/jenkins/workspace/nox-driver-docker.yml'
     options['kitchen_platforms_file'] = '/var/jenkins/workspace/nox-platforms-docker.yml'
-    options['nox_passthrough_opts'] = "${nox_passthrough_opts} tests/unit"
+    options['nox_passthrough_opts'] = "${nox_passthrough_opts} --unit"
 
     def Boolean run_tests = true
     try {
