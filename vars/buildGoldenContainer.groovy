@@ -24,6 +24,13 @@ def call(Map options) {
     // Now that we have enforced build concurrency, let's disable it for when calling runTests
     options['concurrent_builds'] = -1
 
+    echo """\
+    Build Golden Container:
+    -  Supports Py2: ${supports_py2}
+    -  Supports Py3: ${supports_py3}
+
+    """.stripIndent()
+
     stage('Build Container') {
         ansiColor('xterm') {
             node(jenkins_slave_label) {
@@ -126,11 +133,13 @@ def call(Map options) {
                         Py2: {
                             def py2_options = options.clone()
                             py2_options['python_version'] = 'py2'
+                            py2_options['test_suite_name'] = 'Py2'
                             runTests(py2_options)
                         },
                         Py3: {
                             def py3_options = options.clone()
                             py3_options['python_version'] = 'py3'
+                            py2_options['test_suite_name'] = 'Py3'
                             runTests(py3_options)
                         },
                         failFast: false
