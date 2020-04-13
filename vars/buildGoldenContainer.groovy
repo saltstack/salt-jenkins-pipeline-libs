@@ -36,24 +36,18 @@ def call(Map options) {
                                 checkout scm
                             }
                             withDockerHubCredentials('docker-hub-credentials') {
-                                sh """
-                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                    mkdir -p bin
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                    unzip -d bin packer_1.4.5_linux_amd64.zip
-                                    export PATH="\${PWD}/bin:\${PATH}"
-                                fi
-                                pyenv install 3.6.8 || echo "We already have this python."
-                                pyenv local 3.6.8
-                                if [ ! -d venv ]; then
-                                    virtualenv venv
-                                fi
-                                . venv/bin/activate
-                                pip install -r os-images/requirements/py3.6/base.txt
-                                inv build-docker --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
-                                """
+                                withPackerVersion("1.4.5") {
+                                    sh """
+                                    pyenv install 3.6.8 || echo "We already have this python."
+                                    pyenv local 3.6.8
+                                    if [ ! -d venv ]; then
+                                        virtualenv venv
+                                    fi
+                                    . venv/bin/activate
+                                    pip install -r os-images/requirements/py3.6/base.txt
+                                    inv build-docker --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                    """
+                                }
                             }
                             container_name = sh (
                                 script: """
@@ -186,24 +180,18 @@ def call(Map options) {
                             try {
                                 checkout scm
                                 withDockerHubCredentials('docker-hub-credentials') {
-                                    sh """
-                                    if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                        mkdir -p bin
-                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                        sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                        unzip -d bin packer_1.4.5_linux_amd64.zip
-                                        export PATH="\${PWD}/bin:\${PATH}"
-                                    fi
-                                    pyenv install 3.6.8 || echo "We already have this python."
-                                    pyenv local 3.6.8
-                                    if [ ! -d venv ]; then
-                                        virtualenv venv
-                                    fi
-                                    . venv/bin/activate
-                                    pip install -r os-images/requirements/py3.6/base.txt
-                                    inv promote-container --container=${container_name} --assume-yes
-                                    """
+                                    withPackerVersion("1.4.5") {
+                                        sh """
+                                        pyenv install 3.6.8 || echo "We already have this python."
+                                        pyenv local 3.6.8
+                                        if [ ! -d venv ]; then
+                                            virtualenv venv
+                                        fi
+                                        . venv/bin/activate
+                                        pip install -r os-images/requirements/py3.6/base.txt
+                                        inv promote-container --container=${container_name} --assume-yes
+                                        """
+                                    }
                                 }
                             } finally {
                                 cleanWs notFailBuild: true
