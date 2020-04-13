@@ -223,6 +223,7 @@ def call(Map options) {
                             Py2: {
                                 def py2_options = options.clone()
                                 py2_options['python_version'] = 'py2'
+                                py2_options['test_suite_name'] = 'Py2'
                                 try {
                                     runTests(py2_options)
                                     addInfoBadge id: 'py2-test-suite', text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
@@ -236,6 +237,7 @@ def call(Map options) {
                             Py3: {
                                 def py3_options = options.clone()
                                 py3_options['python_version'] = 'py3'
+                                py3_options['test_suite_name'] = 'Py3'
                                 try {
                                     runTests(py3_options)
                                     addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
