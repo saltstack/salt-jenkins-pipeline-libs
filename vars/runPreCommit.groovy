@@ -73,28 +73,47 @@ def call(Map options) {
             '''
         }
 
-        if (env.CHANGE_ID) {
-            stage('Pre-Commit Changes') {
-                sh '''
-                set -e
-                eval "$(pyenv init - --no-rehash)"
-                pyenv shell 3.7.6
-                # Lint checks have it's own Jenkins job
-                export SKIP=lint-salt,lint-tests
-                pre-commit run --color always -v --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
-                '''
+        try {
+            sh '''
+            if [ -f ~/.pypirc ]; then
+                mv ~/.pypirc ~/.pypirc.bak
+            fi
+            if [ -f ~/.config/pip/pip.conf ]; then
+                mv ~/.config/pip/pip.conf ~/.config/pip/pip.conf.bak
+            fi
+            '''
+            if (env.CHANGE_ID) {
+                stage('Pre-Commit Changes') {
+                    sh '''
+                    set -e
+                    eval "$(pyenv init - --no-rehash)"
+                    pyenv shell 3.7.6
+                    # Lint checks have it's own Jenkins job
+                    export SKIP=lint-salt,lint-tests
+                    pre-commit run --color always --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
+                    '''
+                }
+            } else {
+                stage('Pre-Commit') {
+                    sh '''
+                    set -e
+                    eval "$(pyenv init - --no-rehash)"
+                    pyenv shell 3.7.6
+                    # Lint checks have it's own Jenkins job
+                    export SKIP=lint-salt,lint-tests
+                    pre-commit run --color always --show-diff-on-failure -a
+                    '''
+                }
             }
-        } else {
-            stage('Pre-Commit') {
-                sh '''
-                set -e
-                eval "$(pyenv init - --no-rehash)"
-                pyenv shell 3.7.6
-                # Lint checks have it's own Jenkins job
-                export SKIP=lint-salt,lint-tests
-                pre-commit run --color always -v --show-diff-on-failure -a
-                '''
-            }
+        } finally {
+            sh '''
+            if [ -f ~/.pypirc.bak ]; then
+                mv ~/.pypirc.bak ~/.pypirc
+            fi
+            if [ -f ~/.config/pip/pip.conf.bak ]; then
+                mv ~/.config/pip/pip.conf.bak ~/.config/pip/pip.conf
+            fi
+            '''
         }
     }
 }
