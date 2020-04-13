@@ -80,8 +80,8 @@ def call(Map options) {
                 eval "$(pyenv init - --no-rehash)"
                 pyenv shell 3.7.6
                 # Lint checks have it's own Jenkins job
-                export SKIP=lint-salt,lint-tests
-                pre-commit run --color always -v --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
+                export SKIP=lint-salt,lint-tests,pip-tools-compile
+                pre-commit run --color always --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
                 '''
             }
         } else {
@@ -91,8 +91,8 @@ def call(Map options) {
                 eval "$(pyenv init - --no-rehash)"
                 pyenv shell 3.7.6
                 # Lint checks have it's own Jenkins job
-                export SKIP=lint-salt,lint-tests
-                pre-commit run --color always -v --show-diff-on-failure -a
+                export SKIP=lint-salt,lint-tests,pip-tools-compile
+                pre-commit run --color always --show-diff-on-failure -a
                 '''
             }
         }
