@@ -87,200 +87,164 @@ def call(Map options) {
     options['nox_passthrough_opts'] = "${nox_passthrough_opts} --unit"
 
     def Boolean run_tests = true
-    try {
-        if ( container_created == true ) {
-            try {
-                if ( is_pr_build == false ) {
-                    message = "${distro_name}-${distro_version} Docker Container `${container_name}` is built. Skip tests?"
-                    try {
-                        slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
-                        slackSend(
-                            channel: "#golden-images",
-                            color: '#FF8243',
-                            message: slack_message)
-                    } catch (Exception e2) {
-                        sh "echo Failed to send the Slack notification: ${e2}"
-                    }
-
-                    try {
-                        timeout(time: 15, unit: 'MINUTES') {
-                            run_tests = input(
-                                id: 'run-tests',
-                                message: "\n\n\n${message}\n",
-                                parameters: [
-                                    booleanParam(
-                                        defaultValue: true,
-                                        description: 'Push the button to skip tests.',
-                                        name: 'Please confirm you agree with this'
-                                    )
-                                ]
-                            )
-                        }
-                    } catch(t_err) { // timeout reached or input false
-                        def user = t_err.getCauses()[0].getUser()
-                        if( 'SYSTEM' == user.toString() ) { // SYSTEM means timeout.
-                            run_tests = true
-                        } else {
-                            run_tests = false
-                            echo "Test suite execution skipped by: [${user}]"
-                        }
-                    }
+    if ( container_created == true ) {
+        try {
+            if ( is_pr_build == false ) {
+                message = "${distro_name}-${distro_version} Docker Container `${container_name}` is built. Skip tests?"
+                try {
+                    slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
+                    slackSend(
+                        channel: "#golden-images",
+                        color: '#FF8243',
+                        message: slack_message)
+                } catch (Exception e2) {
+                    sh "echo Failed to send the Slack notification: ${e2}"
                 }
 
-                if ( run_tests == true ) {
-                    if ( supports_py2 == true && supports_py3 == true ) {
-                        parallel(
-                            Py2: {
-                                def py2_options = options.clone()
-                                py2_options['python_version'] = 'py2'
-                                runTests(py2_options)
-                            },
-                            Py3: {
-                                def py3_options = options.clone()
-                                py3_options['python_version'] = 'py3'
-                                runTests(py3_options)
-                            },
-                            failFast: false
+                try {
+                    timeout(time: 15, unit: 'MINUTES') {
+                        run_tests = input(
+                            id: 'run-tests',
+                            message: "\n\n\n${message}\n",
+                            parameters: [
+                                booleanParam(
+                                    defaultValue: true,
+                                    description: 'Push the button to skip tests.',
+                                    name: 'Please confirm you agree with this'
+                                )
+                            ]
                         )
-                        tests_passed = true
-                    } else if ( supports_py2 == true ) {
-                        options['python_version'] = 'py2'
-                        runTests(options)
-                        tests_passed = true
-                    } else if ( supports_py3 == true ) {
-                        options['python_version'] = 'py3'
-                        runTests(options)
-                        tests_passed = true
                     }
-                } else {
-                    tests_passed = true
-                }
-            } finally {
-                if ( is_pr_build == false ) {
-                    stage('Promote Docker Container') {
-                        try {
-                            try {
-                                message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
-                                if (tests_passed) {
-                                    message = "${message}\nTests Passed"
-                                } else {
-                                    message = "${message}\n*Tests Failed. Take extra care before promoting*."
-                                }
-                                message = "${message}\nPlease confirm or deny promotion &lt;${env.BUILD_URL}|here&gt;"
-                                slackSend(
-                                    channel: "#golden-images",
-                                    color: '#FF8243',
-                                    message: message)
-                            } catch (Exception e2) {
-                                sh "echo Failed to send the Slack notification: ${e2}"
-                            }
-                            message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
-                            if (tests_passed) {
-                                message = "${message}\nTests Passed."
-                            } else {
-                                message = "${message}\nTests Failed. Take extra care before promoting."
-                            }
-                            timeout(time: 4, unit: 'HOURS') {
-                                input id: 'promote-container', message: "\n\n\n${message}\n\n\nPromote Docker Container ${container_name}?\n", ok: 'Promote!'
-                            }
-                            node(jenkins_slave_label) {
-                                try {
-                                    checkout scm
-                                    withDockerHubCredentials('docker-hub-credentials') {
-                                        sh """
-                                        if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                            mkdir -p bin
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                            unzip -d bin packer_1.4.5_linux_amd64.zip
-                                            export PATH="\${PWD}/bin:\${PATH}"
-                                        fi
-                                        pyenv install 3.6.8 || echo "We already have this python."
-                                        pyenv local 3.6.8
-                                        if [ ! -d venv ]; then
-                                            virtualenv venv
-                                        fi
-                                        . venv/bin/activate
-                                        pip install -r os-images/requirements/py3.6/base.txt
-                                        inv promote-docker --container-name=${container_name} --assume-yes
-                                        """
-                                    }
-                                } finally {
-                                    cleanWs notFailBuild: true
-                                }
-                            }
-                            container_built_msg = "Docker Container ${container_name} was promoted for CI duties!"
-                            addBadge(
-                                id: 'promoted-container-badge',
-                                icon: "/static/8361d0d6/images/16x16/accept.png",
-                                text: container_built_msg
-                            )
-                            createSummary(
-                                icon: "/images/48x48/accept.png",
-                                text: container_built_msg
-                            )
-                            try {
-                                slackSend(
-                                    channel: "#golden-images",
-                                    color: '#00FF00',
-                                    message: "${distro_name}-${distro_version} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
-                            } catch (Exception e3) {
-                                sh "echo Failed to send the Slack notification: ${e3}"
-                            }
-                        } catch (Exception e4) {
-                            println "Docker Container ${container_name} was NOT promoted for CI duties! Reason: ${e4}"
-                            addWarningBadge(
-                                id: 'promoted-container-badge',
-                                text: "Docker Container ${container_name} was NOT promoted for CI duties!"
-                            )
-                            createSummary(
-                                icon: "/images/48x48/warning.png",
-                                text: "Docker Container ${container_name} was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
-                            )
-                            try {
-                                slackSend(
-                                    channel: "#golden-images",
-                                    color: '#FF0000',
-                                    message: "${distro_name}-${distro_version} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
-                            } catch (Exception e5) {
-                                sh "echo Failed to send the Slack notification: ${e5}"
-                            }
-                        }
+                } catch(t_err) { // timeout reached or input false
+                    def user = t_err.getCauses()[0].getUser()
+                    if( 'SYSTEM' == user.toString() ) { // SYSTEM means timeout.
+                        run_tests = true
+                    } else {
+                        run_tests = false
+                        echo "Test suite execution skipped by: [${user}]"
                     }
                 }
             }
-        }
-    } finally {
-        stage('Cleanup Old Docker Containers') {
-            if (container_name) {
-                node(jenkins_slave_label) {
+
+            if ( run_tests == true ) {
+                if ( supports_py2 == true && supports_py3 == true ) {
+                    parallel(
+                        Py2: {
+                            def py2_options = options.clone()
+                            py2_options['python_version'] = 'py2'
+                            runTests(py2_options)
+                        },
+                        Py3: {
+                            def py3_options = options.clone()
+                            py3_options['python_version'] = 'py3'
+                            runTests(py3_options)
+                        },
+                        failFast: false
+                    )
+                    tests_passed = true
+                } else if ( supports_py2 == true ) {
+                    options['python_version'] = 'py2'
+                    runTests(options)
+                    tests_passed = true
+                } else if ( supports_py3 == true ) {
+                    options['python_version'] = 'py3'
+                    runTests(options)
+                    tests_passed = true
+                }
+            } else {
+                tests_passed = true
+            }
+        } finally {
+            if ( is_pr_build == false ) {
+                stage('Promote Docker Container') {
                     try {
-                        timeout(time: 10, unit: 'MINUTES') {
-                            checkout scm
-                            withDockerHubCredentials('docker-hub-credentials') {
-                                sh """
-                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                    mkdir -p bin
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                    unzip -d bin packer_1.4.5_linux_amd64.zip
-                                    export PATH="\${PWD}/bin:\${PATH}"
-                                fi
-                                pyenv install 3.6.8 || echo "We already have this python."
-                                pyenv local 3.6.8
-                                if [ ! -d venv ]; then
-                                    virtualenv venv
-                                fi
-                                . venv/bin/activate
-                                pip install -r os-images/requirements/py3.6/base.txt
-                                inv cleanup-docker --container-name='${container_name}' --assume-yes
-                                """
+                        try {
+                            message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
+                            if (tests_passed) {
+                                message = "${message}\nTests Passed"
+                            } else {
+                                message = "${message}\n*Tests Failed. Take extra care before promoting*."
+                            }
+                            message = "${message}\nPlease confirm or deny promotion &lt;${env.BUILD_URL}|here&gt;"
+                            slackSend(
+                                channel: "#golden-images",
+                                color: '#FF8243',
+                                message: message)
+                        } catch (Exception e2) {
+                            sh "echo Failed to send the Slack notification: ${e2}"
+                        }
+                        message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
+                        if (tests_passed) {
+                            message = "${message}\nTests Passed."
+                        } else {
+                            message = "${message}\nTests Failed. Take extra care before promoting."
+                        }
+                        timeout(time: 4, unit: 'HOURS') {
+                            input id: 'promote-container', message: "\n\n\n${message}\n\n\nPromote Docker Container ${container_name}?\n", ok: 'Promote!'
+                        }
+                        node(jenkins_slave_label) {
+                            try {
+                                checkout scm
+                                withDockerHubCredentials('docker-hub-credentials') {
+                                    sh """
+                                    if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
+                                        mkdir -p bin
+                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
+                                        curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
+                                        sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
+                                        unzip -d bin packer_1.4.5_linux_amd64.zip
+                                        export PATH="\${PWD}/bin:\${PATH}"
+                                    fi
+                                    pyenv install 3.6.8 || echo "We already have this python."
+                                    pyenv local 3.6.8
+                                    if [ ! -d venv ]; then
+                                        virtualenv venv
+                                    fi
+                                    . venv/bin/activate
+                                    pip install -r os-images/requirements/py3.6/base.txt
+                                    inv promote-container --container=${container_name} --assume-yes
+                                    """
+                                }
+                            } finally {
+                                cleanWs notFailBuild: true
                             }
                         }
-                    } finally {
-                        cleanWs notFailBuild: true
+                        container_built_msg = "Docker Container ${container_name} was promoted for CI duties!"
+                        addBadge(
+                            id: 'promoted-container-badge',
+                            icon: "/static/8361d0d6/images/16x16/accept.png",
+                            text: container_built_msg
+                        )
+                        createSummary(
+                            icon: "/images/48x48/accept.png",
+                            text: container_built_msg
+                        )
+                        try {
+                            slackSend(
+                                channel: "#golden-images",
+                                color: '#00FF00',
+                                message: "${distro_name}-${distro_version} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                        } catch (Exception e3) {
+                            sh "echo Failed to send the Slack notification: ${e3}"
+                        }
+                    } catch (Exception e4) {
+                        println "Docker Container ${container_name} was NOT promoted for CI duties! Reason: ${e4}"
+                        addWarningBadge(
+                            id: 'promoted-container-badge',
+                            text: "Docker Container ${container_name} was NOT promoted for CI duties!"
+                        )
+                        createSummary(
+                            icon: "/images/48x48/warning.png",
+                            text: "Docker Container ${container_name} was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
+                        )
+                        try {
+                            slackSend(
+                                channel: "#golden-images",
+                                color: '#FF0000',
+                                message: "${distro_name}-${distro_version} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                        } catch (Exception e5) {
+                            sh "echo Failed to send the Slack notification: ${e5}"
+                        }
                     }
                 }
             }
