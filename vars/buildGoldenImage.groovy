@@ -50,24 +50,18 @@ def call(Map options) {
                                 stage('Build AMI') {
                                     println "Using EC2 Region: ${ec2_region}"
                                     ansiColor('xterm') {
-                                        sh """
-                                        if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                            mkdir -p bin
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                            unzip -d bin packer_1.4.5_linux_amd64.zip
-                                            export PATH="\${PWD}/bin:\${PATH}"
-                                        fi
-                                        pyenv install 3.6.8 || echo "We already have this python."
-                                        pyenv local 3.6.8
-                                        if [ ! -d venv ]; then
-                                            virtualenv venv
-                                        fi
-                                        . venv/bin/activate
-                                        pip install -r os-images/requirements/py3.6/base.txt
-                                        inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
-                                        """
+                                        withPackerVersion("1.4.5") {
+                                            sh """
+                                            pyenv install 3.6.8 || echo "We already have this python."
+                                            pyenv local 3.6.8
+                                            if [ ! -d venv ]; then
+                                                virtualenv venv
+                                            fi
+                                            . venv/bin/activate
+                                            pip install -r os-images/requirements/py3.6/base.txt
+                                            inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
+                                            """
+                                        }
                                     }
                                     ami_image_id = sh (
                                         script: """
@@ -99,24 +93,18 @@ def call(Map options) {
                                             withEnv([
                                                 "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
                                             ]) {
-                                                sh """
-                                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                                    mkdir -p bin
-                                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                                    unzip -d bin packer_1.4.5_linux_amd64.zip
-                                                    export PATH="\${PWD}/bin:\${PATH}"
-                                                fi
-                                                pyenv install 3.6.8 || echo "We already have this python."
-                                                pyenv local 3.6.8
-                                                if [ ! -d venv ]; then
-                                                    virtualenv venv
-                                                fi
-                                                . venv/bin/activate
-                                                pip install -r os-images/requirements/py3.6/base.txt
-                                                inv build-osx --staging --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
-                                                """
+                                                withPackerVersion("1.4.5") {
+                                                    sh """
+                                                    pyenv install 3.6.8 || echo "We already have this python."
+                                                    pyenv local 3.6.8
+                                                    if [ ! -d venv ]; then
+                                                        virtualenv venv
+                                                    fi
+                                                    . venv/bin/activate
+                                                    pip install -r os-images/requirements/py3.6/base.txt
+                                                    inv build-osx --staging --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                                    """
+                                                }
                                             }
                                         }
                                     }
@@ -321,24 +309,18 @@ def call(Map options) {
                                 node(jenkins_slave_label) {
                                     try {
                                         checkout scm
-                                        sh """
-                                        if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                            mkdir -p bin
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                            curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                            sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                            unzip -d bin packer_1.4.5_linux_amd64.zip
-                                            export PATH="\${PWD}/bin:\${PATH}"
-                                        fi
-                                        pyenv install 3.6.8 || echo "We already have this python."
-                                        pyenv local 3.6.8
-                                        if [ ! -d venv ]; then
-                                            virtualenv venv
-                                        fi
-                                        . venv/bin/activate
-                                        pip install -r os-images/requirements/py3.6/base.txt
-                                        inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
-                                        """
+                                        withPackerVersion("1.4.5") {
+                                            sh """
+                                            pyenv install 3.6.8 || echo "We already have this python."
+                                            pyenv local 3.6.8
+                                            if [ ! -d venv ]; then
+                                                virtualenv venv
+                                            fi
+                                            . venv/bin/activate
+                                            pip install -r os-images/requirements/py3.6/base.txt
+                                            inv promote-ami --image-id=${ami_image_id} --region=${ec2_region} --assume-yes
+                                            """
+                                        }
                                     } finally {
                                         cleanWs notFailBuild: true
                                     }
@@ -482,24 +464,18 @@ def call(Map options) {
                         try {
                             timeout(time: 10, unit: 'MINUTES') {
                                 checkout scm
-                                sh """
-                                if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
-                                    mkdir -p bin
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_linux_amd64.zip
-                                    curl -O https://releases.hashicorp.com/packer/1.4.5/packer_1.4.5_SHA256SUMS
-                                    sha256sum -c --ignore-missing packer_1.4.5_SHA256SUMS
-                                    unzip -d bin packer_1.4.5_linux_amd64.zip
-                                    export PATH="\${PWD}/bin:\${PATH}"
-                                fi
-                                pyenv install 3.6.8 || echo "We already have this python."
-                                pyenv local 3.6.8
-                                if [ ! -d venv ]; then
-                                    virtualenv venv
-                                fi
-                                . venv/bin/activate
-                                pip install -r os-images/requirements/py3.6/base.txt
-                                inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
-                                """
+                                withPackerVersion("1.4.5") {
+                                    sh """
+                                    pyenv install 3.6.8 || echo "We already have this python."
+                                    pyenv local 3.6.8
+                                    if [ ! -d venv ]; then
+                                        virtualenv venv
+                                    fi
+                                    . venv/bin/activate
+                                    pip install -r os-images/requirements/py3.6/base.txt
+                                    inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
+                                    """
+                                }
                             }
                         } finally {
                             cleanWs notFailBuild: true
