@@ -177,7 +177,7 @@ def call(List<String> conditions_found, String filename) {
             def instance_terminated_msg = 'stream closed, instance likely terminated'
             addWarningBadge(
                 id: instance_terminated_id,
-                test: instance_terminated_msg
+                text: instance_terminated_msg
             )
             createSummary(
                 id: instance_terminated_id,
