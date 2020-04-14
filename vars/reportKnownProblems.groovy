@@ -6,6 +6,7 @@ def call(List<String> conditions_found, String filename) {
     def String check_exit_codes_id = 'check-exit-codes'
     def String memory_error_id = 'memory-error'
     def String daemon_failed_to_start_id = 'daemon-failed-to-start'
+    def String instance_terminated_id = 'instance-terminated'
 
     if ( conditions_found.contains(ssh_timeout_id) == false ) {
         // Let's check for SSH Timeouts
@@ -157,6 +158,33 @@ def call(List<String> conditions_found, String filename) {
             )
         }
 
+    }
+
+    if ( conditions_found.contains(instance_terminated_id) == false ) {
+        // Let's check for stream closed which usually indicates the instance was terminated
+        def instance_terminated_rc = sh(
+            label: 'instance-terminated',
+            returnStatus: true,
+            script: """
+            grep -q 'Message: closed stream' ${filename}
+            """
+        )
+
+        if ( instance_terminated_rc == 0 ) {
+            // The match succeeded
+            conditions_found << instance_terminated_rc
+            retry_condition_found = true
+            def instance_terminated_msg = 'stream closed, instance likely terminated'
+            addWarningBadge(
+                id: instance_terminated_id,
+                test: instance_terminated_msg
+            )
+            createSumary(
+                id: instance_terminated_id,
+                icon: 'warning.png',
+                text: "<b>${instance_terminated_msg}</b>"
+            )
+        }
     }
 
     return retry_condition_found
