@@ -179,7 +179,7 @@ def call(List<String> conditions_found, String filename) {
                 id: instance_terminated_id,
                 test: instance_terminated_msg
             )
-            createSumary(
+            createSummary(
                 id: instance_terminated_id,
                 icon: 'warning.png',
                 text: "<b>${instance_terminated_msg}</b>"
