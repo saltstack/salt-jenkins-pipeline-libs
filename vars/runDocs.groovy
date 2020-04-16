@@ -42,8 +42,8 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv --version
-            pyenv install --skip-existing 3.6.8
-            pyenv shell 3.6.8
+            pyenv install --skip-existing 3.7.6
+            pyenv shell 3.7.6
             python --version
             pip install -U nox-py2==2019.6.25
             nox --version
@@ -53,7 +53,7 @@ def call(Map options) {
         stage('Build HTML Docs') {
             sh '''
             eval "$(pyenv init -)"
-            pyenv shell 3.6.8
+            pyenv shell 3.7.6
             nox -e 'docs-html(compress=True)'
             '''
             archiveArtifacts artifacts: 'doc/html-archive.tar.*'
@@ -62,7 +62,7 @@ def call(Map options) {
         stage('Build Man Pages') {
             sh '''
             eval "$(pyenv init -)"
-            pyenv shell 3.6.8
+            pyenv shell 3.7.6
             nox -e 'docs-man(compress=True, update=False)'
             '''
             archiveArtifacts artifacts: 'doc/man-archive.tar.*'
