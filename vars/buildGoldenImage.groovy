@@ -9,6 +9,8 @@ def call(Map options) {
     def Boolean supports_py3 = options.get('supports_py3', true)
     def String ec2_region = options.get('ec2_region', 'us-west-2')
 
+    def Integer build_image_timeout_minutes = options.get('build_image_timeout_minutes', 60)
+
     // AWS
     def String ami_image_id
     def String ami_name_filter
@@ -38,7 +40,7 @@ def call(Map options) {
         ansiColor('xterm') {
             node(jenkins_slave_label) {
                 try {
-                    timeout(time: 1, unit: 'HOURS') {
+                    timeout(time: build_image_timeout_minutes, unit: 'MINUTES') {
                         timestamps {
 
                             // Checkout the repo
