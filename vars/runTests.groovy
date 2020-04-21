@@ -49,6 +49,7 @@ def call(Map options) {
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
+    def Boolean fast_slow_staged_testrun = options.get('fast_slow_staged_testrun', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -313,61 +314,123 @@ def call(Map options) {
                         convergeVM.call()
                     }
 
-                    try {
-                        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-                            stage(run_tests_stage_name) {
-                                withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    def runTests = {
+                        try {
+                            timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
+                                stage(run_tests_stage_name) {
+                                    withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                        sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                    }
                                 }
                             }
+                        } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
+                            def cause = inactivity_exception.causes.get(0)
+                            if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
+                                def timeout_id = "inactivity-timeout"
+                                def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
+                                addWarningBadge(
+                                    id: timeout_id,
+                                    text: timeout_message
+                                )
+                                createSummary(
+                                    id: timeout_id,
+                                    icon: 'warning.png',
+                                    text: "<b>${timeout_message}</b>"
+                                )
+                            }
+                            throw inactivity_exception
+                        } finally {
+                            sh """
+                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
+                            fi
+                            if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
+                            fi
+                            """
+
+                            // Let's report about known problems found
+                            def List<String> conditions_found = []
+                            reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
+
+                            stage(download_stage_name) {
+                                withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
+                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
+                                }
+                                sh """
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
+                                fi
+                                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
+                                fi
+                                """
+                            }
                         }
-                    } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
-                        def cause = inactivity_exception.causes.get(0)
-                        if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
-                            def timeout_id = "inactivity-timeout"
-                            def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
-                            addWarningBadge(
-                                id: timeout_id,
-                                text: timeout_message
-                            )
-                            createSummary(
-                                id: timeout_id,
-                                icon: 'warning.png',
-                                text: "<b>${timeout_message}</b>"
-                            )
+                    }
+
+                    if ( fast_slow_staged_testrun ) {
+
+                        def String original_test_suite_name = test_suite_name
+                        def String original_test_suite_name_slug = test_suite_name_slug
+                        def String original_run_tests_stage_name = run_tests_stage_name
+                        def String original_download_stage_name = download_stage_name
+
+                        try {
+                            test_suite_name = "fast"
+                            test_suite_name_slug = test_suite_name
+                            run_tests_stage_name = "Run Fast (<=1 sec) Tests"
+                            download_stage_name = "Download Fast Tests Artefacts"
+                            try {
+                                // First the fast tests
+                                withEnv(["NOX_PASSTHROUGH_OPTS=--tests-faster-than=1 ${nox_passthrough_opts}"]) {
+                                    runTests.call()
+                                }
+                            } catch (Exception fast_tests_exception ) {
+                                addWarningBadge(
+                                    id: "${test_suite_name_slug}-tests-fail",
+                                    text: "${run_tests_stage_name} Failed!"
+                                )
+                                createSummary(
+                                    id: "${test_suite_name_slug}-tests-fail",
+                                    icon: 'warning.png',
+                                    text: "<b>${run_tests_stage_name} Failed!</b>"
+                                )
+                                throw fast_tests_exception
+                            }
+                            // Now the slow tests, if the fast ones passed
+                            test_suite_name = "slow"
+                            test_suite_name_slug = test_suite_name
+                            run_tests_stage_name = "Run Slow (>1 sec) Tests"
+                            download_stage_name = "Download Slow Tests Artefacts"
+                            try {
+                                withEnv(["NOX_PASSTHROUGH_OPTS=--tests-slower-than=1 ${nox_passthrough_opts}"]) {
+                                    runTests.call()
+                                }
+                            } catch (Exception slow_tests_exception ) {
+                                addWarningBadge(
+                                    id: "${test_suite_name_slug}-tests-fail",
+                                    text: "${run_tests_stage_name} Failed!"
+                                )
+                                createSummary(
+                                    id: "${test_suite_name_slug}-tests-fail",
+                                    icon: 'warning.png',
+                                    text: "<b>${run_tests_stage_name} Failed!</b>"
+                                )
+                                throw slow_tests_exception
+                            }
+                        } finally {
+                            test_suite_name = original_test_suite_name
+                            test_suite_name_slug = original_test_suite_name_slug
+                            run_tests_stage_name = original_run_tests_stage_name
+                            download_stage_name = original_download_stage_name
                         }
-                        throw inactivity_exception
+                    } else {
+                        runTests.call()
                     }
                 }
             } finally {
                 try {
-                    sh """
-                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
-                    fi
-                    if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
-                    fi
-                    """
-
-                    // Let's report about known problems found
-                    def List<String> conditions_found = []
-                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
-
-                    stage(download_stage_name) {
-                        withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
-                        }
-                        sh """
-                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
-                        fi
-                        if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
-                        fi
-                        """
-                    }
-
                     sh """
                     # Do not error if there are no files to compress
                     xz .kitchen/logs/*-verify.log || true
