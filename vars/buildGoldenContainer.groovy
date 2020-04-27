@@ -110,7 +110,7 @@ def call(Map options) {
                             parameters: [
                                 booleanParam(
                                     defaultValue: true,
-                                    description: 'Push the button to skip tests.',
+                                    description: 'Push the abort button to skip tests.',
                                     name: 'Please confirm you agree with this'
                                 )
                             ]
