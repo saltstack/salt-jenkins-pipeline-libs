@@ -25,6 +25,11 @@ def call(Map options) {
     def Boolean image_created = false
     def Boolean tests_passed = false
     def Boolean is_pr_build = isPRBuild()
+    def String packer_staging_flag = ""
+
+    if ( is_pr_build ) {
+        packer_staging_flag = "--staging"
+    }
 
     def Boolean macos_build = false
     if ( distro_name == 'macosx' ) {
@@ -61,7 +66,7 @@ def call(Map options) {
                                             fi
                                             . venv/bin/activate
                                             pip install -r os-images/requirements/py3.6/base.txt
-                                            inv build-aws --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
+                                            inv build-aws ${packer_staging_flag} --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID} --region=${ec2_region}
                                             """
                                         }
                                     }
@@ -104,7 +109,7 @@ def call(Map options) {
                                                     fi
                                                     . venv/bin/activate
                                                     pip install -r os-images/requirements/py3.6/base.txt
-                                                    inv build-osx --staging --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                                    inv build-osx ${packer_staging_flag} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
                                                     """
                                                 }
                                             }
@@ -477,7 +482,7 @@ def call(Map options) {
                                     fi
                                     . venv/bin/activate
                                     pip install -r os-images/requirements/py3.6/base.txt
-                                    inv cleanup-aws --staging --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
+                                    inv cleanup-aws ${packer_staging_flag} --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
                                     """
                                 }
                             }

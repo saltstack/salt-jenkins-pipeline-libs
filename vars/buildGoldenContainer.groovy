@@ -18,6 +18,11 @@ def call(Map options) {
     def Boolean container_created = false
     def Boolean tests_passed = false
     def Boolean is_pr_build = isPRBuild()
+    def String packer_staging_flag = ""
+
+    if ( is_pr_build ) {
+        packer_staging_flag = "--staging"
+    }
 
     // Enforce build concurrency
     enforceBuildConcurrency(options)
@@ -52,7 +57,7 @@ def call(Map options) {
                                     fi
                                     . venv/bin/activate
                                     pip install -r os-images/requirements/py3.6/base.txt
-                                    inv build-docker --staging --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                    inv build-docker ${packer_staging_flag} --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
                                     """
                                 }
                             }
