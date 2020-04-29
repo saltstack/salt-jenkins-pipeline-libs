@@ -23,6 +23,9 @@ def call(Map options) {
     if ( is_pr_build ) {
         packer_staging_flag = "--staging"
     }
+    // For docker containers, we always build a staging container, we promote(rename) it
+    // on master branch builds to non-staging
+    packer_staging_flag = ""
 
     // Enforce build concurrency
     enforceBuildConcurrency(options)
