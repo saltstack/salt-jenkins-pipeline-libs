@@ -31,7 +31,6 @@ def call(Map options) {
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
     def String python_version = options.get('python_version')
-    def String golden_images_branch = options.get('golden_images_branch')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
@@ -44,7 +43,6 @@ def call(Map options) {
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
-    def String ami_image_id = options.get('ami_image_id', '')
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
@@ -68,9 +66,37 @@ def call(Map options) {
         }
     }
 
+    // In case we're testing golden images
+    def Boolean golden_images_build = false
+    def String ami_image_id = options.get('ami_image_id', '')
+    def String vagrant_box = options.get('vagrant_box', '')
+    def String vagrant_box_version = options.get('vagrant_box_version', '')
+    def String vagrant_box_provider = options.get('vagrant_box_provider', 'parallels')
+    def String docker_image_name = options.get('docker_image_name', '')
+    def Boolean delete_vagrant_box = true
+    def Boolean delete_docker_image = true
+
     def Boolean macos_build = false
+    def Boolean docker_build = false
+
     if ( distro_name == 'macosx' ) {
         macos_build = true
+    }
+
+    if ( ami_image_id != '' ) {
+        golden_images_build = true
+    } else if ( vagrant_box != '' ) {
+        golden_images_build = true
+    } else if ( docker_image_name != '' ) {
+        docker_build = true
+        golden_images_build = true
+        delete_docker_image = true
+    } else {
+        golden_images_build = false
+        if ( macos_build ) {
+            delete_vagrant_box = false
+        }
+        delete_docker_image = false
     }
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
@@ -84,7 +110,6 @@ def call(Map options) {
     Distro: ${distro_name}
     Distro Version: ${distro_version}
     Python Version: ${python_version}
-    Golden Images Branch: ${golden_images_branch}
     Nox Env Name: ${nox_env_name}
     Nox Passthrough Opts: ${nox_passthrough_opts}
     Test run timeout: ${testrun_timeout} Hours
@@ -100,6 +125,23 @@ def call(Map options) {
     Computed Machine Hostname: ${vm_hostname}
     """.stripIndent()
 
+    if ( ami_image_id != '' ) {
+        echo """\
+        Amazon AMI: ${ami_image_id}
+        """.stripIndent()
+    }
+    if ( vagrant_box != '' ) {
+        echo """\
+        Vagrant Box: ${vagrant_box}
+        Vagrant Box Version: ${vagrant_box_version}
+        """.stripIndent()
+    }
+    if ( docker_image_name != '' ) {
+        echo """\
+        Docker Image: ${docker_image_name}
+        """.stripIndent()
+    }
+
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
         "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
@@ -107,7 +149,6 @@ def call(Map options) {
         "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
         'NOX_ENABLE_FROM_FILENAMES=true',
         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-        "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
         "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
@@ -117,13 +158,16 @@ def call(Map options) {
     ]
 
     if ( ami_image_id != '' ) {
-        echo """\
-        Amazon AMI: ${ami_image_id}
-        """.stripIndent()
+        environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
-    if ( ami_image_id != '' ) {
-        environ << "AMI_IMAGE_ID=${ami_image_id}"
+    if ( vagrant_box != '' ) {
+        environ << "VAGRANT_BOX=${vagrant_box}"
+        environ << "VAGRANT_BOX_VERSION=${vagrant_box_version}"
+    }
+
+    if ( docker_image_name != '' ) {
+        environ << "SALT_DOCKER_IMAGE=${docker_image_name}"
     }
 
     def String clone_stage_name
@@ -173,13 +217,37 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
-                checkout scm
+                if ( golden_images_build == false ) {
+                    checkout scm
+                } else {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [
+                            [name: "master"]
+                        ],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [
+                            [
+                                $class: 'CloneOption',
+                                noTags: false,
+                                reference: '',
+                                shallow: true
+                            ]
+                        ],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [
+                            [url: "https://github.com/saltstack/salt.git"]
+                        ]
+                    ])
+                }
             }
 
             // Setup the kitchen required bundle
             stage(setup_stage_name) {
                 try {
                     sh '''
+                    set -e
+                    set -x
                     # wait at most 15 minutes for other jobs to finish taking care of bundle installs
                     while find /tmp/lock_bundle -mmin -15 | grep -q /tmp/lock_bundle
                     do
@@ -189,9 +257,200 @@ def call(Map options) {
                     touch /tmp/lock_bundle
                     '''
                     if ( macos_build ) {
-                        sh 'bundle install --with vagrant --without ec2 windows docker'
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with vagrant
+                        bundle config --local without ec2 windows docker
+                        bundle install
+                        """
+                        if ( golden_images_build ) {
+                            // No coverage
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            verifier:
+                              coverage: false
+                            """.stripIndent()
+                        }
+                    } else if ( docker_build ) {
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with docker
+                        bundle config --local without ec2 vagrant windows
+                        bundle install
+                        """
+                        if ( golden_images_build ) {
+                            // No coverage
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            driver:
+                              name: docker
+                              use_sudo: false
+                              hostname: salt
+                              privileged: true
+                              username: kitchen
+                              volume:
+                                - /var/run/docker.sock:/docker.sock
+                              cap_add:
+                                - sys_admin
+                              disable_upstart: false
+                              provision_command:
+                                - systemctl enable sshd
+                                - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              driver_config:
+                                run_command: /usr/lib/systemd/systemd
+                                run_options: --entrypoint=/usr/lib/systemd/systemd
+                            transport:
+                              name: rsync
+
+                            provisioner:
+                              name: salt_solo
+                              salt_version: false
+                              salt_install: false
+                              run_salt_call: false
+                              install_after_init_environment: false
+                              log_level: info
+                              sudo: true
+                              require_chef: false
+                              retry_on_exit_code:
+                                - 139
+                              max_retries: 2
+                              salt_copy_filter:
+                                - __pycache__
+                                - '*.pyc'
+                                - .bundle
+                                - .tox
+                                - .nox
+                                - .kitchen
+                                - artifacts
+                                - Gemfile.lock
+                              # Remote states needs to be defined and under it testingdir or else
+                              # the local directory isn't copied over to the VM's/Containers that
+                              # get spun up.
+                              remote_states:
+                                testingdir: /testing
+                              state_top: {}
+                              pillars: {}
+
+                            platforms:
+                              - name: arch
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: arch-lts
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: amazon-2
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: centos-7
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-7' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: centos-8
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: debian-9
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: debian-10
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: fedora-30
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-30' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: fedora-31
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-31' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: fedora-32
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: opensuse-15
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: ubuntu-16.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: ubuntu-18.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1804' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: ubuntu-20.04
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+
+                            suites:
+                              - name: py2
+                              - name: py3
+
+                            verifier:
+                              name: nox
+                              run_destructive: true
+                              coverage: false
+                              junitxml: true
+                              sudo: true
+                              transport: zeromq
+                              sysinfo: true
+                              sys_stats: true
+                            """.stripIndent()
+                        }
                     } else {
-                        sh 'bundle install --with ec2 windows --without docker vagrant'
+                        sh """
+                        set -e
+                        set -x
+                        bundle config --local with ec2 windows
+                        bundle config --local without vagrant docker
+                        bundle install
+                        """
+                        if ( golden_images_build ) {
+                            // Make sure we don't get any promoted images
+                            writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                            driver:
+                              image_search:
+                                description: 'CI-STAGING *'
+                            verifier:
+                              coverage: false
+                            """.stripIndent()
+                        }
                     }
                 } finally {
                     sh '''
@@ -200,225 +459,353 @@ def call(Map options) {
                 }
             }
 
-            def createVM = {
-                stage(create_stage_name) {
-                    if ( macos_build ) {
-                        stage(vagrant_box_details_stage_name) {
-                            sh '''
-                            bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
-                            '''
-                        }
-                        try {
-                            sh """
-                            # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
-                            while find /tmp/lock_${distro_version} -mmin -120 | grep -q /tmp/lock_${distro_version}
-                            do
-                                echo 'vm creation locked, sleeping 120 seconds'
-                                sleep 120
-                            done
-                            touch /tmp/lock_${distro_version}
-                            """
-                            sh '''
-                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
-                            '''
-                            sh """
-                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
-                            fi
-                            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
-                            fi
-                            """
-                        } finally {
-                            sh """
-                            rm -f /tmp/lock_${distro_version}
-                            """
-                        }
-                    } else {
-                        retry(3) {
-                            if ( use_spot_instances ) {
+            try {
+                def createVM = {
+                    stage(create_stage_name) {
+                        if ( macos_build ) {
+                            stage(vagrant_box_details_stage_name) {
                                 sh '''
-                                cp -f ~/workspace/spot.yml .kitchen.local.yml
-                                t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
-                                '''
-                            } else {
-                                sh '''
-                                t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                set -e
+                                set -x
+                                bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                                 '''
                             }
-                            sh """
-                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
-                            fi
-                            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
-                            fi
-                            """
-                        }
-                        try {
-                            sh '''
-                            bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
-                            grep 'image_id:' kitchen-diagnose-info.txt
-                            grep 'instance_type:' -A5 kitchen-diagnose-info.txt
-                            '''
-                        } catch (Exception kitchen_diagnose_error) {
-                            println "Failed to get the kitchen diagnose information: ${kitchen_diagnose_error}"
-                        } finally {
-                            sh '''
-                            rm -f kitchen-diagnose-info.txt
-                            rm -f .kitchen.local.yml
-                            '''
+                            try {
+                                sh """
+                                set -e
+                                set -x
+                                # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
+                                while find /tmp/lock_${distro_version} -mmin -120 | grep -q /tmp/lock_${distro_version}
+                                do
+                                    echo 'vm creation locked, sleeping 120 seconds'
+                                    sleep 120
+                                done
+                                touch /tmp/lock_${distro_version}
+                                """
+                                sh '''
+                                set -e
+                                set -x
+                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                '''
+                            } finally {
+                                sh """
+                                set -e
+                                set -x
+                                rm -f /tmp/lock_${distro_version}
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                fi
+                                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
+                                fi
+                                """
+                            }
+                        } else if ( docker_build ) {
+                            try {
+                                sh '''
+                                set -e
+                                set -x
+                                t=$(shuf -i 15-45 -n 1); echo "Sleeping $t seconds"; sleep $t
+                                ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                '''
+                            } finally {
+                                sh """
+                                set -e
+                                set -x
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                fi
+                                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
+                                fi
+                                """
+                            }
+                        } else {
+                            if ( golden_images_build ) {
+                                stage('Discover AMI') {
+                                    command_output = sh returnStdout: true, script:
+                                        '''
+                                        bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'image_id:' | awk '{ print $2 }'
+                                        '''
+                                    image_id = command_output.trim()
+                                    if ( image_id != '' ) {
+                                        addInfoBadge id: 'discovered-ami-badge', text: "Discovered AMI ${image_id} for this running instance"
+                                        createSummary(icon: "/images/48x48/attribute.png", text: "Discovered AMI: ${image_id}")
+                                    } else {
+                                        addWarningBadge id: 'discovered-ami-badge', text: "No AMI discovered to promote"
+                                        createSummary(icon: "/images/48x48/warning.png", text: "No AMI discovered to promote")
+                                    }
+                                    command_output = sh returnStdout: true, script:
+                                        '''
+                                        grep 'region:' $SALT_KITCHEN_DRIVER | awk '{ print $2 }'
+                                        '''
+                                    ec2_region = command_output.trim()
+                                    println "Discovered EC2 Region: ${ec2_region}"
+                                }
+                            }
+                            retry(3) {
+                                try {
+                                    if ( use_spot_instances ) {
+                                        sh '''
+                                        set -e
+                                        set -x
+                                        cp -f ~/workspace/spot.yml .kitchen.local.yml
+                                        t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
+                                        bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                        '''
+                                    } else {
+                                        sh '''
+                                        set -e
+                                        set -x
+                                        t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
+                                        bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                        '''
+                                    }
+                                } finally {
+                                    sh """
+                                    set -e
+                                    set -x
+                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                    fi
+                                    if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
+                                    fi
+                                    """
+                                }
+                            }
+                            try {
+                                sh '''
+                                set -e
+                                set -x
+                                bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
+                                grep 'image_id:' kitchen-diagnose-info.txt
+                                grep 'instance_type:' -A5 kitchen-diagnose-info.txt
+                                '''
+                            } catch (Exception kitchen_diagnose_error) {
+                                println "Failed to get the kitchen diagnose information: ${kitchen_diagnose_error}"
+                            } finally {
+                                sh '''
+                                set -e
+                                set -x
+                                rm -f kitchen-diagnose-info.txt
+                                rm -f .kitchen.local.yml
+                                '''
+                            }
                         }
                     }
                 }
-            }
-            createVM.call()
+                createVM.call()
 
-            try {
-                // Since we reserve for spot instances for a maximum of 6 hours,
-                // and we also set the maximum of some of the pipelines to 6 hours,
-                // the following timeout get's 15 minutes shaved off so that we
-                // have at least that ammount of time to download artifacts
-                timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
-                    def convergeVM = {
-                        stage(converge_stage_name) {
-                            if ( macos_build ) {
-                                sh '''
-                                ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                '''
-                            } else {
-                                sh '''
-                                ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                '''
-                            }
-                            sh """
-                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-converge.log"
-                            fi
-                            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-converge.log"
-                            fi
-                            """
-                        }
-                    }
-                    try {
-                        convergeVM.call()
-                    } catch(e) {
-                        // Retry creation once if converge fails
-                        echo "Retrying Create VM and Converge VM"
-                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
-                        createVM.call()
-                        convergeVM.call()
-                    }
-
-                    try {
-                        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-                            stage(run_tests_stage_name) {
-                                withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                try {
+                    // Since we reserve for spot instances for a maximum of 6 hours,
+                    // and we also set the maximum of some of the pipelines to 6 hours,
+                    // the following timeout get's 15 minutes shaved off so that we
+                    // have at least that ammount of time to download artifacts
+                    timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
+                        def convergeVM = {
+                            stage(converge_stage_name) {
+                                try {
+                                    if ( macos_build ) {
+                                        sh '''
+                                        set -e
+                                        set -x
+                                        ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                        '''
+                                    } else {
+                                        sh '''
+                                        set -e
+                                        set -x
+                                        ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                        '''
+                                    }
+                                } finally {
+                                    sh """
+                                    set -e
+                                    set -x
+                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-converge.log"
+                                    fi
+                                    if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-converge.log"
+                                    fi
+                                    """
                                 }
                             }
                         }
-                    } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
-                        def cause = inactivity_exception.causes.get(0)
-                        if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
-                            def timeout_id = "inactivity-timeout"
-                            def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
-                            addWarningBadge(
-                                id: timeout_id,
-                                text: timeout_message
-                            )
-                            createSummary(
-                                id: timeout_id,
-                                icon: 'warning.png',
-                                text: "<b>${timeout_message}</b>"
-                            )
+                        try {
+                            convergeVM.call()
+                        } catch(e) {
+                            // Retry creation once if converge fails
+                            echo "Retrying Create VM and Converge VM"
+                            sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
+                            createVM.call()
+                            convergeVM.call()
                         }
-                        throw inactivity_exception
+
+                        try {
+                            timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
+                                stage(run_tests_stage_name) {
+                                    withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                        sh '''
+                                        set -e
+                                        set -x
+                                        bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                        '''
+                                    }
+                                }
+                            }
+                        } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
+                            def cause = inactivity_exception.causes.get(0)
+                            if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
+                                def timeout_id = "inactivity-timeout"
+                                def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
+                                addWarningBadge(
+                                    id: timeout_id,
+                                    text: timeout_message
+                                )
+                                createSummary(
+                                    id: timeout_id,
+                                    icon: 'warning.png',
+                                    text: "<b>${timeout_message}</b>"
+                                )
+                            }
+                            throw inactivity_exception
+                        }
+                    }
+                } finally {
+                    try {
+                        sh """
+                        set -e
+                        set -x
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
+                        fi
+                        if [ -s ".kitchen/logs/kitchen.log" ]; then
+                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
+                        fi
+                        """
+
+                        // Let's report about known problems found
+                        def List<String> conditions_found = []
+                        reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
+
+                        stage(download_stage_name) {
+                            try {
+                                withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
+                                    sh '''
+                                    set -e
+                                    set -x
+                                    bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0
+                                    '''
+                                }
+                            } finally {
+                                sh """
+                                set -e
+                                set -x
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
+                                fi
+                                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
+                                fi
+                                """
+                            }
+                        }
+
+                        sh """
+                        # Do not error if there are no files to compress
+                        xz .kitchen/logs/*-verify.log || true
+                        if tail -n 1 artifacts/logs/runtests-* | grep -q 'exit code: 0'
+                        then
+                            # Do not error if there are no files to compress
+                            xz artifacts/logs/runtests-* || true
+                        fi
+                        """
+
+                        junit(
+                            testResults: 'artifacts/xml-unittests-output/*.xml',
+                            allowEmptyResults: true
+                        )
+                    } finally {
+                        stage(cleanup_stage_name) {
+                            try {
+                                sh '''
+                                set -e
+                                set -x
+                                bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                '''
+                            } finally {
+                                if ( macos_build ) {
+                                    try {
+                                        if ( delete_vagrant_box ) {
+                                            sh """
+                                            set -e
+                                            set -x
+                                            vagrant box remove --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                                            """
+                                        }
+                                    } catch (Exception delete_vagrant_box_error) {
+                                        println "Failed to delete vagrant box: ${delete_vagrant_box_error}"
+                                    }
+                                    try {
+                                        sh """
+                                        set -e
+                                        set -x
+                                        vagrant box prune --keep-active-boxes --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                                        """
+                                    } catch (Exception prune_vagrant_box_error) {
+                                        println "Failed to prune vagrant box: ${prune_vagrant_box_error}"
+                                    }
+                                } else if ( docker_build ) {
+                                    if ( delete_docker_image ) {
+                                        sh """
+                                        set -e
+                                        set -x
+                                        docker rmi -f ${docker_image_name} || true
+                                        """
+                                    }
+                                }
+                            }
+                        }
+                        if ( upload_test_coverage == true ) {
+                            stage(upload_stage_name) {
+                                if ( run_full ) {
+                                    def distro_strings = [
+                                        distro_name,
+                                        distro_version
+                                    ]
+                                    def report_strings = (
+                                        [python_version] + nox_env_name.split('-') + extra_codecov_flags
+                                    ).flatten()
+                                    if ( upload_split_test_coverage ) {
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/tests.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                            report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                        )
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/salt.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                            report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                        )
+                                    } else {
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/salt.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                            report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             } finally {
-                try {
-                    sh """
-                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
-                    fi
-                    if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
-                    fi
-                    """
-
-                    // Let's report about known problems found
-                    def List<String> conditions_found = []
-                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
-
-                    stage(download_stage_name) {
-                        withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
-                        }
-                        sh """
-                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
-                        fi
-                        if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
-                        fi
-                        """
-                    }
-
-                    sh """
-                    # Do not error if there are no files to compress
-                    xz .kitchen/logs/*-verify.log || true
-                    if tail -n 1 artifacts/logs/runtests-* | grep -q 'exit code: 0'
-                    then
-                        # Do not error if there are no files to compress
-                        xz artifacts/logs/runtests-* || true
-                    fi
-                    """
-
-                    archiveArtifacts(
-                        artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
-                        allowEmptyArchive: true
-                    )
-                    junit 'artifacts/xml-unittests-output/*.xml'
-                } finally {
-                    stage(cleanup_stage_name) {
-                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                    }
-                    if ( upload_test_coverage == true ) {
-                        stage(upload_stage_name) {
-                            if ( run_full ) {
-                                def distro_strings = [
-                                    distro_name,
-                                    distro_version
-                                ]
-                                def report_strings = (
-                                    [python_version] + nox_env_name.split('-') + extra_codecov_flags
-                                ).flatten()
-                                if ( upload_split_test_coverage ) {
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/tests.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                        report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                    )
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/salt.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                        report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                                    )
-                                } else {
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/salt.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                        report_flags: ([distro_strings.join('')] + report_strings).flatten()
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
+                archiveArtifacts(
+                    artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
+                    allowEmptyArchive: true
+                )
             }
         }
     }
