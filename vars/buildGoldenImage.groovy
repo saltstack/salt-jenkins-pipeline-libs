@@ -360,7 +360,7 @@ def call(Map options) {
                                 )
                                 createSummary(
                                     icon: "/images/48x48/warning.png",
-                                    text: "AMI ${ami_image_id}(${ami_name_filter}) was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
+                                    text: "AMI ${ami_image_id}(${ami_name_filter}) was <b>NOT</b> promoted for CI duties!"
                                 )
                                 try {
                                     slackSend(
@@ -449,7 +449,7 @@ def call(Map options) {
                                 )
                                 createSummary(
                                     icon: "/images/48x48/warning.png",
-                                    text: "Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was &lt;b&gt;NOT&lt;/b&gt; promoted for CI duties!"
+                                    text: "Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was <b>NOT</b> promoted for CI duties!"
                                 )
                                 try {
                                     slackSend(
