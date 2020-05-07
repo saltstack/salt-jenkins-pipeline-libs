@@ -190,7 +190,7 @@ def call(Map options) {
                         message = "${distro_name}-${distro_version} Vagrant Box `${vagrant_box_name}` is built. Skip tests?"
                     }
                     try {
-                        slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
+                        slack_message = "${message}\nPlease confirm or deny tests execution <${env.BUILD_URL}|here>"
                         slackSend(
                             channel: "#golden-images",
                             color: '#FF8243',
@@ -298,7 +298,7 @@ def call(Map options) {
                                     } else {
                                         message = "${message}\n*Tests Failed. Take extra care before promoting*."
                                     }
-                                    message = "${message}\nPlease confirm or deny promotion &lt;${env.BUILD_URL}|here&gt;"
+                                    message = "${message}\nPlease confirm or deny promotion <${env.BUILD_URL}|here>"
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#FF8243',
@@ -348,7 +348,7 @@ def call(Map options) {
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#00FF00',
-                                        message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                        message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was promoted! (<${env.BUILD_URL}|open>)")
                                 } catch (Exception e3) {
                                     sh "echo Failed to send the Slack notification: ${e3}"
                                 }
@@ -366,7 +366,7 @@ def call(Map options) {
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#FF0000',
-                                        message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                        message: "${distro_name}-${distro_version} AMI `${ami_image_id}` was *NOT* promoted! (<${env.BUILD_URL}|open>)")
                                 } catch (Exception e5) {
                                     sh "echo Failed to send the Slack notification: ${e5}"
                                 }
@@ -382,7 +382,7 @@ def call(Map options) {
                                     } else {
                                         slack_message = "${message}\n*Tests Failed. Take extra care before promoting*."
                                     }
-                                    slack_message = "${slack_message}\nPlease confirm or deny promotion &lt;${env.BUILD_URL}|here&gt;"
+                                    slack_message = "${slack_message}\nPlease confirm or deny promotion <${env.BUILD_URL}|here>"
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#FF8243',
@@ -436,7 +436,7 @@ def call(Map options) {
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#00FF00',
-                                        message: "${distro_name}-${distro_version} Vagrant Box `${vagrant_box_name}(${vagrant_box_version})` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                        message: "${distro_name}-${distro_version} Vagrant Box `${vagrant_box_name}(${vagrant_box_version})` was promoted! (<${env.BUILD_URL}|open>)")
                                 } catch (Exception e3) {
                                     sh "echo Failed to send the Slack notification: ${e3}"
                                 }
@@ -455,7 +455,7 @@ def call(Map options) {
                                     slackSend(
                                         channel: "#golden-images",
                                         color: '#FF0000',
-                                        message: "${distro_name}-${distro_version} Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                        message: "${distro_name}-${distro_version} Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was *NOT* promoted! (<${env.BUILD_URL}|open>)")
                                 } catch (Exception e5) {
                                     sh "echo Failed to send the Slack notification: ${e5}"
                                 }
