@@ -6,7 +6,7 @@ def call(Map options) {
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
             parameters([
-                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+                booleanParam(defaultValue: true, description: 'Run full test suite, including slow tests', name: 'runFull')
             ])
         ])
         run_full = params.runFull
@@ -66,6 +66,11 @@ def call(Map options) {
             // This is a branch build
             notify_slack_channel = '#jenkins-prod'
         }
+    }
+
+    if ( run_full ) {
+        // If run_full is true, pass the --run-slow flag
+        nox_passthrough_opts = "${nox_passthrough_opts} --run-slow"
     }
 
     def Boolean macos_build = false
