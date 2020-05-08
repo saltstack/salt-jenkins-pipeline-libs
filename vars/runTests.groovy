@@ -1,6 +1,13 @@
 def call(Map options) {
 
-    def Boolean run_full = true
+    def Boolean isTriggeredByTimer = !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
+    def Boolean run_full
+
+    if ( isTriggeredByTimer ) {
+        run_full = true
+    } else {
+        run_full = false
+    }
 
     if (env.CHANGE_ID) {
         properties([
@@ -26,6 +33,7 @@ def call(Map options) {
             ]
         ])
     }
+    isTriggeredByTimer = !currentBuild.getBuildCauses('hudson.triggers.TimerTrigger$TimerTriggerCause').isEmpty()
 
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
