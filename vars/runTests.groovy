@@ -120,7 +120,7 @@ def call(Map options) {
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
         "TEST_PLATFORM=${distro_name}-${distro_version}",
-        "FORCE_FULL=${run_full}",
+        "FORCE_FULL=true",
         "TEST_VM_HOSTNAME=${vm_hostname}"
     ]
 
