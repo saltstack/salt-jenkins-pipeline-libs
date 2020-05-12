@@ -1,12 +1,23 @@
 def call(Map options) {
 
-    def Boolean run_full = true
+    def Boolean run_full
+
+    // Allow explicitly setting the build to run the full test suite
+    def Boolean run_full_test_suite = options.get('run_full_test_suite', null)
+    echo "run_full_test_suite: ${run_full_test_suite}"
+    if ( run_full_test_suite != null ) {
+        run_full = run_full_test_suite
+    } else {
+        run_full = false
+    }
+    echo "run_full: ${run_full}"
 
     if (env.CHANGE_ID) {
+        // on a multibranch project, if CHANGE_ID is set, then this is a PR
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
             parameters([
-                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
+                booleanParam(defaultValue: run_full, description: 'Run full test suite, including slow tests', name: 'runFull')
             ])
         ])
     } else {
@@ -24,11 +35,15 @@ def call(Map options) {
                 ]
             ],
             parameters([
-                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
+                booleanParam(defaultValue: run_full, description: 'Run full test suite, including slow tests', name: 'runFull')
             ])
         ])
     }
     run_full = params.runFull
+    echo """\
+    params.runFull: ${params.runFull}
+    run_full: ${run_full}
+    """
 
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
