@@ -356,7 +356,19 @@ def call(Map options) {
                     if (env.CHANGE_ID) {
                         // On PRs, fast tests first, if passed, then, slow tests for changed files
                         if ( run_full ) {
-                            runTests.call()
+                            stage("${run_tests_stage_name} (Fast)") {
+                                println "Not running just fast tests on full test runs"
+                            }
+                            stage("${run_tests_stage_name} (Slow/Changed)") {
+                                println "Not running slow tests just on changed files on full test runs"
+                            }
+                            original_run_tests_stage = run_tests_stage_name
+                            try {
+                                run_tests_stage_name = "${run_tests_stage_name} (Slow)"
+                                runTests.call()
+                            } finally {
+                                run_tests_stage_name = original_run_tests_stage
+                            }
                         } else {
                             original_run_tests_stage = run_tests_stage_name
                             try {
@@ -378,6 +390,9 @@ def call(Map options) {
                                 }
                             } finally {
                                 run_tests_stage_name = original_run_tests_stage
+                            }
+                            stage("${run_tests_stage_name} (Slow)") {
+                                println "Not running slow tests since we're not running the full test suite"
                             }
                         }
                     } else {
