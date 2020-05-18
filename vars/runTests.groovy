@@ -438,11 +438,11 @@ def call(Map options) {
                     fi
                     """
 
+                    junit 'artifacts/xml-unittests-output/*.xml'
                     archiveArtifacts(
                         artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
                         allowEmptyArchive: true
                     )
-                    junit 'artifacts/xml-unittests-output/*.xml'
                 } finally {
                     stage(cleanup_stage_name) {
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
