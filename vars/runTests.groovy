@@ -321,30 +321,67 @@ def call(Map options) {
                         convergeVM.call()
                     }
 
-                    try {
-                        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-                            stage(run_tests_stage_name) {
-                                withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                    sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    def cause
+                    def String timeout_id
+                    def String timeout_message
+                    def String original_run_tests_stage
+
+                    def runTests = {
+                        try {
+                            timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
+                                stage(run_tests_stage_name) {
+                                    withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                        sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                    }
                                 }
                             }
+                        } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
+                            cause = inactivity_exception.causes.get(0)
+                            if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
+                                timeout_id = "inactivity-timeout"
+                                timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
+                                addWarningBadge(
+                                    id: timeout_id,
+                                    text: timeout_message
+                                )
+                                createSummary(
+                                    id: timeout_id,
+                                    icon: 'warning.png',
+                                    text: "<b>${timeout_message}</b>"
+                                )
+                            }
+                            throw inactivity_exception
                         }
-                    } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
-                        def cause = inactivity_exception.causes.get(0)
-                        if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
-                            def timeout_id = "inactivity-timeout"
-                            def timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
-                            addWarningBadge(
-                                id: timeout_id,
-                                text: timeout_message
-                            )
-                            createSummary(
-                                id: timeout_id,
-                                icon: 'warning.png',
-                                text: "<b>${timeout_message}</b>"
-                            )
+                    }
+                    if (env.CHANGE_ID) {
+                        // On PRs, fast tests first, if passed, then, slow tests for changed files
+                        if ( run_full ) {
+                            runTests.call()
+                        } else {
+                            original_run_tests_stage = run_tests_stage_name
+                            try {
+                                run_tests_stage_name = "${run_tests_stage_name} (Fast)"
+                                timeout_id = "inactivity-timeout-fast"
+                                runTests.call()
+                            } finally {
+                                run_tests_stage_name = original_run_tests_stage
+                            }
+                            try {
+                                run_tests_stage_name = "${run_tests_stage_name} (Slow/Changed)"
+                                timeout_id = "inactivity-timeout-slow-changed"
+                                withEnv([
+                                    "FORCE_FULL=false",
+                                    "NOX_ENABLE_FROM_FILENAMES=1",
+                                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --run-slow"
+                                ]) {
+                                    runTests.call()
+                                }
+                            } finally {
+                                run_tests_stage_name = original_run_tests_stage
+                            }
                         }
-                        throw inactivity_exception
+                    } else {
+                        runTests.call()
                     }
                 }
             } finally {
