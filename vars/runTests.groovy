@@ -52,6 +52,7 @@ def call(Map options) {
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', true)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
+    def Boolean force_run_full = options.get('force_run_full', false)
     def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
@@ -70,6 +71,10 @@ def call(Map options) {
             // This is a branch build
             notify_slack_channel = '#jenkins-prod'
         }
+    }
+
+    if ( force_run_full ) {
+        run_full = true
     }
 
     if ( run_full ) {
