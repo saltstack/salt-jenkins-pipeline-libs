@@ -52,6 +52,8 @@ def call(Map options) {
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', true)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
+    def Boolean force_run_full = options.get('force_run_full', false)
+    def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -69,6 +71,10 @@ def call(Map options) {
             // This is a branch build
             notify_slack_channel = '#jenkins-prod'
         }
+    }
+
+    if ( force_run_full ) {
+        run_full = true
     }
 
     if ( run_full ) {
@@ -325,6 +331,7 @@ def call(Map options) {
                     def String timeout_id
                     def String timeout_message
                     def String original_run_tests_stage
+                    def local_environ
 
                     def runTests = {
                         try {
@@ -381,11 +388,16 @@ def call(Map options) {
                             try {
                                 run_tests_stage_name = "${run_tests_stage_name} (Slow/Changed)"
                                 timeout_id = "inactivity-timeout-slow-changed"
-                                withEnv([
+
+                                local_environ = [
                                     "FORCE_FULL=false",
-                                    "NOX_ENABLE_FROM_FILENAMES=1",
                                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --run-slow"
-                                ]) {
+                                ]
+                                if ( disable_from_filenames == false ) {
+                                    local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
+                                }
+
+                                withEnv(local_environ) {
                                     runTests.call()
                                 }
                             } finally {
