@@ -449,46 +449,50 @@ def call(Map options) {
                         xz artifacts/logs/runtests-* || true
                     fi
                     """
-
-                    junit 'artifacts/xml-unittests-output/*.xml'
-                    archiveArtifacts(
-                        artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
-                        allowEmptyArchive: true
-                    )
                 } finally {
-                    stage(cleanup_stage_name) {
-                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                    }
-                    if ( upload_test_coverage == true ) {
-                        stage(upload_stage_name) {
-                            if ( run_full ) {
-                                def distro_strings = [
-                                    distro_name,
-                                    distro_version
-                                ]
-                                def report_strings = (
-                                    [python_version] + nox_env_name.split('-') + extra_codecov_flags
-                                ).flatten()
-                                if ( upload_split_test_coverage ) {
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/tests.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                        report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                    )
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/salt.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                        report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                                    )
-                                } else {
-                                    uploadCodeCoverage(
-                                        report_path: 'artifacts/coverage/salt.xml',
-                                        report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                        report_flags: ([distro_strings.join('')] + report_strings).flatten()
-                                    )
+                    try {
+                        stage(cleanup_stage_name) {
+                            sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                        }
+                        if ( upload_test_coverage == true ) {
+                            stage(upload_stage_name) {
+                                if ( run_full ) {
+                                    def distro_strings = [
+                                        distro_name,
+                                        distro_version
+                                    ]
+                                    def report_strings = (
+                                        [python_version] + nox_env_name.split('-') + extra_codecov_flags
+                                    ).flatten()
+                                    if ( upload_split_test_coverage ) {
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/tests.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
+                                            report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                        )
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/salt.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                            report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                        )
+                                    } else {
+                                        uploadCodeCoverage(
+                                            report_path: 'artifacts/coverage/salt.xml',
+                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
+                                            report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                                        )
+                                    }
                                 }
                             }
+                        } else {
+                            echo "Code coverage uploads disabled."
                         }
+                    } finally {
+                        junit 'artifacts/xml-unittests-output/*.xml'
+                        archiveArtifacts(
+                            artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
+                            allowEmptyArchive: true
+                        )
                     }
                 }
             }
