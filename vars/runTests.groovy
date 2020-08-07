@@ -6,10 +6,9 @@ def call(Map options) {
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
             parameters([
-                booleanParam(defaultValue: true, description: 'Run full test suite', name: 'runFull')
+                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
             ])
         ])
-        run_full = params.runFull
     } else {
         properties([
             [
@@ -23,9 +22,13 @@ def call(Map options) {
                     discardOnlyOnSuccess: true,
                     holdMaxBuilds: true
                 ]
-            ]
+            ],
+            parameters([
+                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
+            ])
         ])
     }
+    run_full = params.runFull
 
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
@@ -47,6 +50,8 @@ def call(Map options) {
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
+    def Boolean force_run_full = options.get('force_run_full', false)
+    def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -64,6 +69,15 @@ def call(Map options) {
             // This is a branch build
             notify_slack_channel = '#jenkins-prod'
         }
+    }
+
+    if ( force_run_full ) {
+        run_full = true
+    }
+
+    if ( run_full ) {
+        // If run_full is true, pass the --run-slow flag
+        nox_passthrough_opts = "${nox_passthrough_opts} --run-slow"
     }
 
     // In case we're testing golden images
@@ -153,7 +167,7 @@ def call(Map options) {
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
         "TEST_PLATFORM=${distro_name}-${distro_version}",
-        "FORCE_FULL=${run_full}",
+        "FORCE_FULL=true",
         "TEST_VM_HOSTNAME=${vm_hostname}"
     ]
 
