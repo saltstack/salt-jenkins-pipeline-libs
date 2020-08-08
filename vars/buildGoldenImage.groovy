@@ -274,7 +274,7 @@ def call(Map options) {
                         options['python_version'] = 'py3'
                         try {
                             runTests(options)
-                            addInfoBadge id: 'py2-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
+                            addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
                             createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
                         } catch(Exception py3_err) {
                             addWarningBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
