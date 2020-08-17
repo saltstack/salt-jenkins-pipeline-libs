@@ -443,11 +443,8 @@ def call(Map options) {
                     sh """
                     # Do not error if there are no files to compress
                     xz .kitchen/logs/*-verify.log || true
-                    if tail -n 1 artifacts/logs/runtests-* | grep -q 'exit code: 0'
-                    then
-                        # Do not error if there are no files to compress
-                        xz artifacts/logs/runtests-* || true
-                    fi
+                    # Do not error if there are no files to compress
+                    xz artifacts/logs/runtests-* || true
                     """
                 } finally {
                     try {
