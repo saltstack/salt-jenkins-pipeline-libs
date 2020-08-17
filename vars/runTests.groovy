@@ -44,7 +44,7 @@ def call(Map options) {
     def String notify_slack_channel = options.get('notify_slack_channel', '')
     def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
-    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms-sodium.yml')
+    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
     def Boolean upload_split_test_coverage = options.get('upload_split_test_coverage', false)
