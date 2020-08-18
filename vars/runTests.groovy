@@ -73,6 +73,13 @@ def call(Map options) {
         }
     }
 
+    if ( upload_test_coverage ) {
+        if ( env.UPLOAD_TEST_COVERAGE != "true" ) {
+            upload_test_coverage = false
+            echo "Code coverage uploading globaly disabled by UPLOAD_TEST_COVERAGE=${env.UPLOAD_TEST_COVERAGE} env variable set in jenkins global config"
+        }
+    }
+
     if ( force_run_full ) {
         run_full = true
     }
