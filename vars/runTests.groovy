@@ -494,10 +494,13 @@ def call(Map options) {
                             echo "Code coverage uploads disabled."
                         }
                     } finally {
-                        junit 'artifacts/xml-unittests-output/*.xml'
                         archiveArtifacts(
                             artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
                             allowEmptyArchive: true
+                        )
+                        junit(
+                            keepLongStdio: true,
+                            testResults: 'artifacts/xml-unittests-output/*.xml'
                         )
                     }
                 }
