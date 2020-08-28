@@ -465,37 +465,6 @@ def call(Map options) {
                 }
             }
         }
-    } finally {
-        if ( macos_build == false ) {
-            stage('Cleanup Old AMIs') {
-                if (ami_name_filter) {
-                    node(jenkins_slave_label) {
-                        try {
-                            timeout(time: 10, unit: 'MINUTES') {
-                                checkout scm
-                                withPackerVersion("1.4.5") {
-                                    sh """
-                                    pyenv install 3.7.6 || echo "We already have this python."
-                                    pyenv local 3.7.6
-                                    if [ ! -d venv ]; then
-                                        virtualenv venv
-                                    fi
-                                    . venv/bin/activate
-                                    pip install -r os-images/requirements/py3.6/base.txt
-                                    inv cleanup-aws ${packer_staging_flag} --name-filter='${ami_name_filter}' --region=${ec2_region} --assume-yes --num-to-keep=1
-                                    """
-                                }
-                            }
-                        } finally {
-                            cleanWs notFailBuild: true
-                        }
-                    }
-                }
-            }
-        } else {
-            // Delete the vagrant image that was just tested
-            // XXX: How do we cleanup older box images on artifactory?
-        }
     }
 }
 // vim: ft=groovy ts=4 sts=4 et
