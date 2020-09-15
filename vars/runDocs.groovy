@@ -45,7 +45,7 @@ def call(Map options) {
             pyenv install --skip-existing 3.7.6
             pyenv shell 3.7.6
             python --version
-            pip install -U nox-py2==2019.6.25
+            pip install -U nox==2020.8.22
             nox --version
             '''
         }
