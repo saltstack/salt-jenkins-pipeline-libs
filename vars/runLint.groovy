@@ -211,8 +211,6 @@ def call(Map options) {
                 reference_job_name = "env.BRANCH_NAME"
             }
             publishIssues(
-                enabledForFailure: true,
-                aggregatingResults: true,
                 referenceJobName: "pr-lint/${reference_job_name}",
                 qualityGates: [
                     [threshold: 1, type: 'TOTAL', unstable: false]
