@@ -54,7 +54,12 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv shell 3.7.6
-            nox -e 'docs-html(compress=True)'
+            if nox --list|grep docs-html|grep -q clean
+            then
+              nox -e 'docs-html(compress=True, clean=True)'
+            else
+              nox -e 'docs-html(compress=True)'
+            fi
             '''
             archiveArtifacts artifacts: 'doc/html-archive.tar.*'
         }
@@ -63,7 +68,12 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv shell 3.7.6
-            nox -e 'docs-man(compress=True, update=False)'
+            if nox --list|grep docs-man|grep -q clean
+            then
+              nox -e 'docs-man(compress=True, update=False, clean=True)'
+            else
+              nox -e 'docs-man(compress=True, update=False)'
+            fi
             '''
             archiveArtifacts artifacts: 'doc/man-archive.tar.*'
         }
