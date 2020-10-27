@@ -387,11 +387,6 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
-                              - name: fedora-30
-                                driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-30' %>
-                                  run_command: /usr/lib/systemd/systemd
-                                  run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: fedora-31
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-31' %>
@@ -400,6 +395,11 @@ def call(Map options) {
                               - name: fedora-32
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: fedora-33
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-33' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: opensuse-15
