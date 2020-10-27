@@ -51,7 +51,7 @@ def call(Map options) {
                                 checkout scm
                             }
                             withDockerHubCredentials('docker-hub-credentials') {
-                                withPackerVersion("1.4.5") {
+                                withPackerVersion("1.6.4") {
                                     sh """
                                     pyenv install 3.7.6 || echo "We already have this python."
                                     pyenv local 3.7.6
@@ -197,7 +197,7 @@ def call(Map options) {
                             try {
                                 checkout scm
                                 withDockerHubCredentials('docker-hub-credentials') {
-                                    withPackerVersion("1.4.5") {
+                                    withPackerVersion("1.6.4") {
                                         sh """
                                         pyenv install 3.7.6 || echo "We already have this python."
                                         pyenv local 3.7.6
