@@ -26,8 +26,11 @@ def call(Map opts) {
         pycryptodomex: 'pcdomex',
         tornado: 'trndo',
         macosx: 'mac',
+        macos: 'mac',
         highsierra: 'hsierra',
-        mojave: 'mjv'
+        mojave: 'mjv',
+        catalina: 'ctlna',
+        bigsur: 'bsur'
     ]
 
     replacements.each { original, replacement ->

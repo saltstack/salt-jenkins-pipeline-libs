@@ -92,7 +92,7 @@ def call(Map options) {
     }
 
     def Boolean macos_build = false
-    if ( distro_name == 'macosx' ) {
+    if ( distro_name == 'macosx' || distro_name == 'macos' ) {
         macos_build = true
     }
 
