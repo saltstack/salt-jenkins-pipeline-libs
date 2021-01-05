@@ -370,7 +370,7 @@ def call(Map options) {
                         }
                     }
                     if (env.CHANGE_ID) {
-                        // On PRs, fast tests first, if passed, then, slow tests for changed files
+                        // On PRs, tests for changed files(including slow), if passed, then fast tests.
                         if ( run_full ) {
                             stage("${run_tests_stage_name} (Fast)") {
                                 println "Not running just fast tests on full test runs"
@@ -388,13 +388,6 @@ def call(Map options) {
                         } else {
                             original_run_tests_stage = run_tests_stage_name
                             try {
-                                run_tests_stage_name = "${run_tests_stage_name} (Fast)"
-                                timeout_id = "inactivity-timeout-fast"
-                                runTests.call()
-                            } finally {
-                                run_tests_stage_name = original_run_tests_stage
-                            }
-                            try {
                                 run_tests_stage_name = "${run_tests_stage_name} (Slow/Changed)"
                                 timeout_id = "inactivity-timeout-slow-changed"
 
@@ -409,6 +402,13 @@ def call(Map options) {
                                 withEnv(local_environ) {
                                     runTests.call()
                                 }
+                            } finally {
+                                run_tests_stage_name = original_run_tests_stage
+                            }
+                            try {
+                                run_tests_stage_name = "${run_tests_stage_name} (Fast)"
+                                timeout_id = "inactivity-timeout-fast"
+                                runTests.call()
                             } finally {
                                 run_tests_stage_name = original_run_tests_stage
                             }
