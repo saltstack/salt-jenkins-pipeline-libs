@@ -500,6 +500,7 @@ def call(Map options) {
                         )
                         junit(
                             keepLongStdio: true,
+                            skipPublishingChecks: true,
                             testResults: 'artifacts/xml-unittests-output/*.xml'
                         )
                     }
