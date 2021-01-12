@@ -738,6 +738,7 @@ def call(Map options) {
                         """
 
                         junit(
+                            skipPublishingChecks: true,
                             testResults: 'artifacts/xml-unittests-output/*.xml',
                             allowEmptyResults: true
                         )
