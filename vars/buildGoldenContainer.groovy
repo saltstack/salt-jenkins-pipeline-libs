@@ -3,6 +3,7 @@ def call(Map options) {
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
+    def String distro_arch = options.get('distro_arch')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'docker-slave')
     def Boolean supports_py2 = options.get('supports_py2', true)
@@ -60,7 +61,7 @@ def call(Map options) {
                                     fi
                                     . venv/bin/activate
                                     pip install -r os-images/requirements/py3.6/base.txt
-                                    inv build-docker ${packer_staging_flag} --distro=${distro_name} --distro-version=${distro_version} --salt-pr=${env.CHANGE_ID}
+                                    inv build-docker ${packer_staging_flag} --distro=${distro_name} --distro-version=${distro_version} --distro-arch=${distro_arch} --salt-pr=${env.CHANGE_ID}
                                     """
                                 }
                             }
@@ -99,7 +100,7 @@ def call(Map options) {
     if ( container_created == true ) {
         try {
             if ( is_pr_build == false ) {
-                message = "${distro_name}-${distro_version} Docker Container `${container_name}` is built. Skip tests?"
+                message = "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` is built. Skip tests?"
                 try {
                     slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
                     slackSend(
@@ -170,7 +171,7 @@ def call(Map options) {
                 stage('Promote Docker Container') {
                     try {
                         try {
-                            message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
+                            message = "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` is waiting for CI duties promotion."
                             if (tests_passed) {
                                 message = "${message}\nTests Passed"
                             } else {
@@ -184,7 +185,7 @@ def call(Map options) {
                         } catch (Exception e2) {
                             sh "echo Failed to send the Slack notification: ${e2}"
                         }
-                        message = "${distro_name}-${distro_version} Docker Container `${container_name}` is waiting for CI duties promotion."
+                        message = "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` is waiting for CI duties promotion."
                         if (tests_passed) {
                             message = "${message}\nTests Passed."
                         } else {
@@ -228,7 +229,7 @@ def call(Map options) {
                             slackSend(
                                 channel: "#golden-images",
                                 color: '#00FF00',
-                                message: "${distro_name}-${distro_version} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                message: "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                         } catch (Exception e3) {
                             sh "echo Failed to send the Slack notification: ${e3}"
                         }
@@ -246,7 +247,7 @@ def call(Map options) {
                             slackSend(
                                 channel: "#golden-images",
                                 color: '#FF0000',
-                                message: "${distro_name}-${distro_version} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
+                                message: "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                         } catch (Exception e5) {
                             sh "echo Failed to send the Slack notification: ${e5}"
                         }

@@ -33,6 +33,7 @@ def call(Map options) {
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
+    def String distro_arch = options.get('distro_arch')
     def String python_version = options.get('python_version')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
@@ -44,7 +45,7 @@ def call(Map options) {
     def String notify_slack_channel = options.get('notify_slack_channel', '')
     def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
-    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/nox-platforms.yml')
+    def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
     def String ami_image_id = options.get('ami_image_id', '')
     def Boolean upload_test_coverage = options.get('upload_test_coverage', true)
@@ -57,6 +58,7 @@ def call(Map options) {
         env: env,
         distro_name: distro_name,
         distro_version: distro_version,
+        distro_arch: distro_arch,
         python_version: python_version,
         nox_env_name: nox_env_name,
         extra_parts: extra_codecov_flags,
@@ -93,7 +95,7 @@ def call(Map options) {
     def Boolean macos_build = false
     def Boolean docker_build = false
 
-    if ( distro_name == 'macosx' ) {
+    if ( distro_name.startsWith('macos') ) {
         macos_build = true
     }
 
@@ -123,6 +125,7 @@ def call(Map options) {
     echo """\
     Distro: ${distro_name}
     Distro Version: ${distro_version}
+    Distro Arch: ${distro_arch}
     Python Version: ${python_version}
     Nox Env Name: ${nox_env_name}
     Nox Passthrough Opts: ${nox_passthrough_opts}
@@ -163,10 +166,10 @@ def call(Map options) {
         "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
         'NOX_ENABLE_FROM_FILENAMES=true',
         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-        "CODECOV_FLAGS=${distro_name}${distro_version},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
+        "CODECOV_FLAGS=${distro_name}${distro_version}${distro_arch},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
-        "TEST_PLATFORM=${distro_name}-${distro_version}",
+        "TEST_PLATFORM=${distro_name}-${distro_version}-${distro_arch}",
         "FORCE_FULL=true",
         "TEST_VM_HOSTNAME=${vm_hostname}"
     ]
@@ -507,8 +510,8 @@ def call(Map options) {
                                 set -e
                                 set -x
                                 rm -f /tmp/lock_${distro_version}
-                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                                 fi
                                 if [ -s ".kitchen/logs/kitchen.log" ]; then
                                     mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
@@ -527,8 +530,8 @@ def call(Map options) {
                                 sh """
                                 set -e
                                 set -x
-                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                                 fi
                                 if [ -s ".kitchen/logs/kitchen.log" ]; then
                                     mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
@@ -580,8 +583,8 @@ def call(Map options) {
                                     sh """
                                     set -e
                                     set -x
-                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-create.log"
+                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                                     fi
                                     if [ -s ".kitchen/logs/kitchen.log" ]; then
                                         mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
@@ -638,8 +641,8 @@ def call(Map options) {
                                     sh """
                                     set -e
                                     set -x
-                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-converge.log"
+                                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-converge.log"
                                     fi
                                     if [ -s ".kitchen/logs/kitchen.log" ]; then
                                         mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-converge.log"
@@ -693,8 +696,8 @@ def call(Map options) {
                         sh """
                         set -e
                         set -x
-                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log"
+                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-verify.log"
                         fi
                         if [ -s ".kitchen/logs/kitchen.log" ]; then
                             mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
@@ -703,7 +706,7 @@ def call(Map options) {
 
                         // Let's report about known problems found
                         def List<String> conditions_found = []
-                        reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-verify.log")
+                        reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-verify.log")
 
                         stage(download_stage_name) {
                             try {
@@ -718,8 +721,8 @@ def call(Map options) {
                                 sh """
                                 set -e
                                 set -x
-                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ]; then
-                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${test_suite_name_slug}-download.log"
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-download.log"
                                 fi
                                 if [ -s ".kitchen/logs/kitchen.log" ]; then
                                     mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
@@ -789,7 +792,8 @@ def call(Map options) {
                                 if ( run_full ) {
                                     def distro_strings = [
                                         distro_name,
-                                        distro_version
+                                        distro_version,
+                                        distro_arch
                                     ]
                                     def report_strings = (
                                         [python_version] + nox_env_name.split('-') + extra_codecov_flags
