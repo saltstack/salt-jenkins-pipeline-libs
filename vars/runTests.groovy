@@ -349,33 +349,44 @@ def call(Map options) {
                               pillars: {}
 
                             platforms:
-                              - name: arch
+                              - name: arch-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: arch-lts
+                              - name: arch-lts-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: amazon-2
+                              - name: amazon-2-aarch64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
                                   platform: amazonlinux
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: centos-7
+                              - name: amazon-2-x86-64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
+                                  platform: amazonlinux
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: centos-7-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-7' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: centos-8
+                              - name: centos-8-aarch64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: debian-9
+                              - name: centos-8-x86-64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: debian-9-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9' %>
                                   run_command: /lib/systemd/systemd
@@ -383,7 +394,7 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
-                              - name: debian-10
+                              - name: debian-10-arm64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
                                   run_command: /lib/systemd/systemd
@@ -391,27 +402,30 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
-                              - name: fedora-31
+                              - name: debian-10-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-31' %>
-                                  run_command: /usr/lib/systemd/systemd
-                                  run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: fedora-32
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: fedora-32-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: fedora-33
+                              - name: fedora-33-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-33' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: opensuse-15
+                              - name: opensuse-15-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: ubuntu-16.04
+                              - name: ubuntu-1604-amd64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604' %>
                                   run_command: /lib/systemd/systemd
@@ -419,7 +433,7 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
-                              - name: ubuntu-18.04
+                              - name: ubuntu-1804-amd64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1804' %>
                                   run_command: /lib/systemd/systemd
@@ -427,7 +441,15 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
-                              - name: ubuntu-20.04
+                              - name: ubuntu-2004-arm64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: ubuntu-2004-amd64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
                                   run_command: /lib/systemd/systemd
