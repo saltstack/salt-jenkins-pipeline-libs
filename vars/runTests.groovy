@@ -82,7 +82,7 @@ def call(Map options) {
         echo "Code coverage uploading disabled on the pipeline settings"
     }
 
-    if ( force_run_full ) {
+    if ( force_run_full || env.FORCE_RUN_FULL == "true" ) {
         run_full = true
     }
 
