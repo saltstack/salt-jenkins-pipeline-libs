@@ -166,7 +166,7 @@ def call(Map options) {
         "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
         'NOX_ENABLE_FROM_FILENAMES=true',
         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-        "CODECOV_FLAGS=${distro_name}${distro_version}${distro_arch},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
+        "CODECOV_FLAGS=${distro_name}${distro_version},${distro_arch},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
         "TEST_PLATFORM=${distro_name}-${distro_version}-${distro_arch}",
