@@ -420,6 +420,11 @@ def call(Map options) {
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-33' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: fedora-34-x86-64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-34' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: opensuse-15-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
