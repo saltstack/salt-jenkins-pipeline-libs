@@ -63,7 +63,7 @@ def call(Map options) {
                                             pyenv install 3.7.6 || echo "We already have this python."
                                             pyenv local 3.7.6
                                             if [ ! -d venv ]; then
-                                                virtualenv venv
+                                                python -m venv venv
                                             fi
                                             . venv/bin/activate
                                             pip install -r os-images/requirements/py3.6/base.txt
@@ -106,7 +106,7 @@ def call(Map options) {
                                                     pyenv install 3.7.6 || echo "We already have this python."
                                                     pyenv local 3.7.6
                                                     if [ ! -d venv ]; then
-                                                        virtualenv venv
+                                                        python -m venv venv
                                                     fi
                                                     . venv/bin/activate
                                                     pip install -r os-images/requirements/py3.6/base.txt
@@ -323,7 +323,7 @@ def call(Map options) {
                                         pyenv install 3.7.6 || echo "We already have this python."
                                         pyenv local 3.7.6
                                         if [ ! -d venv ]; then
-                                            virtualenv venv
+                                            python -m venv venv
                                         fi
                                         . venv/bin/activate
                                         pip install -r os-images/requirements/py3.6/base.txt
