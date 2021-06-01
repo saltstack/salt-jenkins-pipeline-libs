@@ -35,6 +35,9 @@ def call(Map options) {
     def Integer testrun_timeout = options.get('testrun_timeout', 3)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'pre-commit')
     def String notify_slack_channel = options.get('notify_slack_channel', '')
+    def String pre_commit_skips = options.get('pre_commit_skips', '')
+    // Lint checks have it's own Jenkins job
+    def _pre_commit_skips = ['lint-salt', 'lint-tests']
 
     if ( notify_slack_channel == '' ) {
         if (env.CHANGE_ID) {
@@ -43,9 +46,15 @@ def call(Map options) {
         } else {
             // This is a branch build
             notify_slack_channel = '#jenkins-prod'
+
         }
     }
 
+    if ( pre_commit_skips != '' ) {
+        pre_commit_skips.split(",").each { skip ->
+            _pre_commit_skips << skip.trim()
+        }
+    }
 
     // Enforce build concurrency
     enforceBuildConcurrency(options)
@@ -66,7 +75,7 @@ def call(Map options) {
             pyenv install --skip-existing 3.7.6
             pyenv shell 3.7.6
             python --version
-            pip3 install -U nox-py2==2019.6.25 pre-commit
+            pip3 install -U nox==2020.8.22 pre-commit
             nox --version
             # Install pre-commit
             pre-commit install --install-hooks
@@ -82,27 +91,24 @@ def call(Map options) {
                 mv ~/.config/pip/pip.conf ~/.config/pip/pip.conf.bak
             fi
             '''
-            if (env.CHANGE_ID) {
-                stage('Pre-Commit Changes') {
-                    sh '''
-                    set -e
-                    eval "$(pyenv init - --no-rehash)"
-                    pyenv shell 3.7.6
-                    # Lint checks have it's own Jenkins job
-                    export SKIP=lint-salt,lint-tests
-                    pre-commit run --color always --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
-                    '''
-                }
-            } else {
-                stage('Pre-Commit') {
-                    sh '''
-                    set -e
-                    eval "$(pyenv init - --no-rehash)"
-                    pyenv shell 3.7.6
-                    # Lint checks have it's own Jenkins job
-                    export SKIP=lint-salt,lint-tests
-                    pre-commit run --color always --show-diff-on-failure -a
-                    '''
+            withEnv(["SKIP=${_pre_commit_skips.join(',')}"]) {
+                if (env.CHANGE_ID) {
+                    stage('Pre-Commit Changes') {
+                        sh '''
+                        set -e
+                        eval "$(pyenv init - --no-rehash)"
+                        pyenv shell 3.7.6
+                        pre-commit run --color always --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
+                        '''
+                    }
+                } else {
+                    stage('Pre-Commit') {
+                        sh '''
+                        set -e
+                        eval "$(pyenv init - --no-rehash)"
+                        pre-commit run --color always --show-diff-on-failure -a
+                        '''
+                    }
                 }
             }
         } finally {

@@ -89,7 +89,7 @@ def call(Map options) {
                 pyenv install --skip-existing 3.7.6
                 pyenv shell 3.7.6 2.7.15
                 python --version
-                pip3 install -U nox-py2==2019.6.25
+                pip3 install -U nox==2020.8.22
                 nox --version
                 # Create the required virtualenvs in serial
                 nox --install-only -e lint-salt
@@ -211,8 +211,6 @@ def call(Map options) {
                 reference_job_name = "env.BRANCH_NAME"
             }
             publishIssues(
-                enabledForFailure: true,
-                aggregatingResults: true,
                 referenceJobName: "pr-lint/${reference_job_name}",
                 qualityGates: [
                     [threshold: 1, type: 'TOTAL', unstable: false]

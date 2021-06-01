@@ -45,7 +45,7 @@ def call(Map options) {
             pyenv install --skip-existing 3.7.6
             pyenv shell 3.7.6
             python --version
-            pip install -U nox-py2==2019.6.25
+            pip install -U nox==2020.8.22
             nox --version
             '''
         }
@@ -54,7 +54,7 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv shell 3.7.6
-            nox -e 'docs-html(compress=True)'
+            nox -e 'docs-html(compress=True, clean=True)'
             '''
             archiveArtifacts artifacts: 'doc/html-archive.tar.*'
         }
@@ -63,7 +63,7 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv shell 3.7.6
-            nox -e 'docs-man(compress=True, update=False)'
+            nox -e 'docs-man(compress=True, update=False, clean=True)'
             '''
             archiveArtifacts artifacts: 'doc/man-archive.tar.*'
         }
