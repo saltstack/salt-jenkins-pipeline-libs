@@ -143,9 +143,6 @@ def call(Map options) {
         echo """\
         Amazon AMI: ${ami_image_id}
         """.stripIndent()
-    }
-
-    if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
@@ -196,6 +193,7 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
+                sh 'git clone --local /var/jenkins/salt.git . && git remote remove origin || true'
                 checkout scm
             }
 
