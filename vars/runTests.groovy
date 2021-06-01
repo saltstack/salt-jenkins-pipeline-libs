@@ -35,7 +35,6 @@ def call(Map options) {
     def String distro_version = options.get('distro_version')
     def String distro_arch = options.get('distro_arch')
     def String python_version = options.get('python_version')
-    def String golden_images_branch = options.get('golden_images_branch')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
@@ -110,7 +109,6 @@ def call(Map options) {
     Distro Version: ${distro_version}
     Distro Arch: ${distro_arch}
     Python Version: ${python_version}
-    Golden Images Branch: ${golden_images_branch}
     Nox Env Name: ${nox_env_name}
     Nox Passthrough Opts: ${nox_passthrough_opts}
     Test run timeout: ${testrun_timeout} Hours
@@ -133,7 +131,6 @@ def call(Map options) {
         "NOX_ENV_NAME=${nox_env_name.toLowerCase()}",
         'NOX_ENABLE_FROM_FILENAMES=true',
         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts}",
-        "GOLDEN_IMAGES_CI_BRANCH=${golden_images_branch}",
         "CODECOV_FLAGS=${distro_name}${distro_version},${distro_arch},${python_version},${nox_env_name.toLowerCase().split('-').join(',')}",
         "RBENV_VERSION=${rbenv_version}",
         "TEST_SUITE=${python_version}",
