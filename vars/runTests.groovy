@@ -207,6 +207,13 @@ def call(Map options) {
             stage(setup_stage_name) {
                 try {
                     sh '''
+                    python setup.py write_salt_version
+                    '''
+                } catch (Exception write_salt_version_error) {
+                    println "Failed to write the 'salt/_version.py' file: ${write_salt_version_error}"
+                }
+                try {
+                    sh '''
                     # wait at most 15 minutes for other jobs to finish taking care of bundle installs
                     while find /tmp/lock_bundle -mmin -15 | grep -q /tmp/lock_bundle
                     do
