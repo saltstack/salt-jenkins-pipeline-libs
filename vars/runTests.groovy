@@ -143,9 +143,6 @@ def call(Map options) {
         echo """\
         Amazon AMI: ${ami_image_id}
         """.stripIndent()
-    }
-
-    if ( ami_image_id != '' ) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
