@@ -246,10 +246,9 @@ def call(Map options) {
                         extensions: [
                             [
                                 $class: 'CloneOption',
-                                depth: 2000,
                                 noTags: false,
                                 reference: '',
-                                shallow: true
+                                shallow: false
                             ]
                         ],
                         submoduleCfg: [],
