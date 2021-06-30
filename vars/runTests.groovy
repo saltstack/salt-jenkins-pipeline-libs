@@ -386,7 +386,7 @@ def call(Map options) {
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
-                              - name: debian-9-x86-64
+                              - name: debian-9-amd64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9' %>
                                   run_command: /lib/systemd/systemd
