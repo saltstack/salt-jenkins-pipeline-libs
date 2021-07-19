@@ -203,9 +203,11 @@ def call(Map options) {
             // Setup the kitchen required bundle
             stage(setup_stage_name) {
                 try {
-                    sh '''
-                    python setup.py write_salt_version
-                    '''
+                    withEnv(["USE_STATIC_REQUIREMENTS=0"]) {
+                        sh '''
+                        python setup.py write_salt_version
+                        '''
+                    }
                 } catch (Exception write_salt_version_error) {
                     println "Failed to write the 'salt/_version.py' file: ${write_salt_version_error}"
                 }
