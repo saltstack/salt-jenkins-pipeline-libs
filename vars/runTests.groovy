@@ -74,7 +74,16 @@ def call(Map options) {
         }
     }
 
-    if ( force_run_full ) {
+    if ( upload_test_coverage ) {
+        if ( env.UPLOAD_TEST_COVERAGE != "true" ) {
+            upload_test_coverage = false
+            echo "Code coverage uploading globaly disabled by UPLOAD_TEST_COVERAGE=${env.UPLOAD_TEST_COVERAGE} env variable set in jenkins global config"
+        }
+    } else {
+        echo "Code coverage uploading disabled on the pipeline settings"
+    }
+
+    if ( force_run_full || env.FORCE_RUN_FULL == "true" ) {
         run_full = true
     }
 
@@ -142,23 +151,6 @@ def call(Map options) {
     Computed Machine Hostname: ${vm_hostname}
     """.stripIndent()
 
-    if ( ami_image_id != '' ) {
-        echo """\
-        Amazon AMI: ${ami_image_id}
-        """.stripIndent()
-    }
-    if ( vagrant_box != '' ) {
-        echo """\
-        Vagrant Box: ${vagrant_box}
-        Vagrant Box Version: ${vagrant_box_version}
-        """.stripIndent()
-    }
-    if ( docker_image_name != '' ) {
-        echo """\
-        Docker Image: ${docker_image_name}
-        """.stripIndent()
-    }
-
     def environ = [
         "SALT_KITCHEN_PLATFORMS=${kitchen_platforms_file}",
         "SALT_KITCHEN_VERIFIER=${kitchen_verifier_file}",
@@ -175,15 +167,25 @@ def call(Map options) {
     ]
 
     if ( ami_image_id != '' ) {
+        echo """\
+        Amazon AMI: ${ami_image_id}
+        """.stripIndent()
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
     if ( vagrant_box != '' ) {
+        echo """\
+        Vagrant Box: ${vagrant_box}
+        Vagrant Box Version: ${vagrant_box_version}
+        """.stripIndent()
         environ << "VAGRANT_BOX=${vagrant_box}"
         environ << "VAGRANT_BOX_VERSION=${vagrant_box_version}"
     }
 
     if ( docker_image_name != '' ) {
+        echo """\
+        Docker Image: ${docker_image_name}
+        """.stripIndent()
         environ << "SALT_DOCKER_IMAGE=${docker_image_name}"
     }
 
@@ -234,6 +236,7 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
+                sh 'git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true'
                 if ( golden_images_build == false ) {
                     checkout scm
                 } else {
@@ -261,6 +264,15 @@ def call(Map options) {
 
             // Setup the kitchen required bundle
             stage(setup_stage_name) {
+                try {
+                    withEnv(["USE_STATIC_REQUIREMENTS=0"]) {
+                        sh '''
+                        python setup.py write_salt_version
+                        '''
+                    }
+                } catch (Exception write_salt_version_error) {
+                    println "Failed to write the 'salt/_version.py' file: ${write_salt_version_error}"
+                }
                 try {
                     sh '''
                     set -e
@@ -492,11 +504,7 @@ def call(Map options) {
                         bundle install
                         """
                         if ( golden_images_build ) {
-                            // Make sure we don't get any promoted images
                             writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
-                            driver:
-                              image_search:
-                                description: 'CI-STAGING *'
                             verifier:
                               coverage: false
                             """.stripIndent()
@@ -525,12 +533,12 @@ def call(Map options) {
                                 set -e
                                 set -x
                                 # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
-                                while find /tmp/lock_${distro_version} -mmin -120 | grep -q /tmp/lock_${distro_version}
+                                while find /tmp/lock_${distro_version}_${distro_arch} -mmin -120 | grep -q /tmp/lock_${distro_version}_${distro_arch}
                                 do
                                     echo 'vm creation locked, sleeping 120 seconds'
                                     sleep 120
                                 done
-                                touch /tmp/lock_${distro_version}
+                                touch /tmp/lock_${distro_version}_${distro_arch}
                                 """
                                 sh '''
                                 set -e
@@ -541,7 +549,7 @@ def call(Map options) {
                                 sh """
                                 set -e
                                 set -x
-                                rm -f /tmp/lock_${distro_version}
+                                rm -f /tmp/lock_${distro_version}_${distro_arch}
                                 if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                                     mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                                 fi
