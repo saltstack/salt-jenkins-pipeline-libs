@@ -430,6 +430,11 @@ def call(Map options) {
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
+                              - name: photon-3-x86-64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-photonos-3' %>
+                                  run_command: /usr/lib/systemd/systemd
+                                  run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: ubuntu-1604-amd64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604' %>
