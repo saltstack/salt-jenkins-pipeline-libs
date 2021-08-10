@@ -58,7 +58,7 @@ def call(Map options) {
                                 stage('Build AMI') {
                                     println "Using EC2 Region: ${ec2_region}"
                                     ansiColor('xterm') {
-                                        withPackerVersion("1.7.3") {
+                                        withPackerVersion("1.7.4") {
                                             sh """
                                             pyenv install 3.7.6 || echo "We already have this python."
                                             pyenv local 3.7.6
@@ -101,7 +101,7 @@ def call(Map options) {
                                             withEnv([
                                                 "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
                                             ]) {
-                                                withPackerVersion("1.7.3") {
+                                                withPackerVersion("1.7.4") {
                                                     sh """
                                                     pyenv install 3.7.6 || echo "We already have this python."
                                                     pyenv local 3.7.6
@@ -318,7 +318,7 @@ def call(Map options) {
                             node(jenkins_slave_label) {
                                 try {
                                     checkout scm
-                                    withPackerVersion("1.7.3") {
+                                    withPackerVersion("1.7.4") {
                                         sh """
                                         pyenv install 3.7.6 || echo "We already have this python."
                                         pyenv local 3.7.6
