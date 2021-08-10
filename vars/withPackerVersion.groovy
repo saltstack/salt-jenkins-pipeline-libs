@@ -5,10 +5,18 @@ def call(String version, Closure body=null) {
     sh """
     if [ "\$(which packer)x" == "x" ] && [ ! -f bin/packer ]; then
         mkdir -p bin
-        curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_linux_amd64.zip
-        curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_SHA256SUMS
-        sha256sum -c --ignore-missing packer_${version}_SHA256SUMS
-        unzip -d bin packer_${version}_linux_amd64.zip
+        if [ "\$(uname -m)" == "x86_64" ]
+        then
+            curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_linux_amd64.zip
+            curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_SHA256SUMS
+            sha256sum -c --ignore-missing packer_${version}_SHA256SUMS
+            unzip -d bin packer_${version}_linux_amd64.zip
+        else
+            curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_linux_arm64.zip
+            curl -O https://releases.hashicorp.com/packer/${version}/packer_${version}_SHA256SUMS
+            sha256sum -c --ignore-missing packer_${version}_SHA256SUMS
+            unzip -d bin packer_${version}_linux_arm64.zip
+        fi
     fi
     """
     command_output = sh returnStdout: true, script:
