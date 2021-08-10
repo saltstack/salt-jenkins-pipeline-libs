@@ -363,44 +363,44 @@ def call(Map options) {
                             platforms:
                               - name: arch-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: arch-lts-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-arch-lts:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: amazon-2-aarch64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2:arm64' %>
                                   platform: amazonlinux
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: amazon-2-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-amazon-2:amd64' %>
                                   platform: amazonlinux
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: centos-7-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-7' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-7:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: centos-8-aarch64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8:arm64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: centos-8-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-centos-8:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: debian-9-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-9:amd64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -408,7 +408,7 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: debian-10-arm64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10:arm64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -416,7 +416,7 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: debian-10-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-10:amd64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -424,32 +424,32 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: fedora-32-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: fedora-33-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-33' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-33:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: fedora-34-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-34' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-34:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: opensuse-15-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-opensuse-15:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: photon-3-x86-64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-photonos-3' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-photonos-3:amd64' %>
                                   run_command: /usr/lib/systemd/systemd
                                   run_options: --entrypoint=/usr/lib/systemd/systemd
                               - name: ubuntu-1604-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1604:amd64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -457,7 +457,7 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: ubuntu-1804-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1804' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-1804:amd64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -465,7 +465,7 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: ubuntu-2004-arm64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004:arm64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
@@ -473,7 +473,7 @@ def call(Map options) {
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: ubuntu-2004-amd64
                                 driver_config:
-                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004' %>
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-ubuntu-2004:amd64' %>
                                   run_command: /lib/systemd/systemd
                                   run_options: --entrypoint=/lib/systemd/systemd
                                   provision_command:
