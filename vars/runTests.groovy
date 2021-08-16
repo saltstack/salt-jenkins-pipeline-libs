@@ -422,6 +422,22 @@ def call(Map options) {
                                   provision_command:
                                     - systemctl enable ssh
                                     - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: debian-11-arm64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-11:arm64' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
+                              - name: debian-11-amd64
+                                driver_config:
+                                  image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-debian-11:amd64' %>
+                                  run_command: /lib/systemd/systemd
+                                  run_options: --entrypoint=/lib/systemd/systemd
+                                  provision_command:
+                                    - systemctl enable ssh
+                                    - echo 'L /run/docker.sock - - - - /docker.sock' > /etc/tmpfiles.d/docker.conf
                               - name: fedora-32-x86-64
                                 driver_config:
                                   image: <%= ENV['SALT_DOCKER_IMAGE'] || 'saltstack/ci-fedora-32:amd64' %>
