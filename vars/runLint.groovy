@@ -85,10 +85,10 @@ def call(Map options) {
                 sh '''
                 eval "$(pyenv init -)"
                 pyenv --version
-                pyenv install --skip-existing 3.7.6
-                pyenv shell 3.7.6
+                pyenv install --skip-existing 3.8.11
+                pyenv shell 3.8.11
                 python --version
-                pip3 install -U nox==2020.8.22
+                pip3 install -U nox
                 nox --version
                 # Create the required virtualenvs in serial
                 nox --install-only -e lint-salt
@@ -106,7 +106,7 @@ def call(Map options) {
                                     if (readFile('file-list-changed.log') =~ /(?i)(^|\n)(salt\/.*\.py|setup\.py)\n/) {
                                         sh '''
                                         eval "$(pyenv init - --no-rehash)"
-                                        pyenv shell 3.7.6
+                                        pyenv shell 3.8.11
                                         EC=254
                                         export PYLINT_REPORT=pylint-report-salt-chg.log
                                         grep -Ei '^salt/.*\\.py$|^setup\\.py$' file-list-changed.log | xargs -r '--delimiter=\\n' nox -e lint-salt --
@@ -117,7 +117,7 @@ def call(Map options) {
                                         // Always lint something so reporting doesn't fail
                                         sh '''
                                         eval "$(pyenv init - --no-rehash)"
-                                        pyenv shell 3.7.6
+                                        pyenv shell 3.8.11
                                         EC=254
                                         export PYLINT_REPORT=pylint-report-salt-chg.log
                                         nox -e lint-salt -- salt/ext/__init__.py
@@ -132,7 +132,7 @@ def call(Map options) {
                                     if (readFile('file-list-changed.log') =~ /(?i)(^|\n)tests\/.*\.py\n/) {
                                         sh '''
                                         eval "$(pyenv init - --no-rehash)"
-                                        pyenv shell 3.7.6
+                                        pyenv shell 3.8.11
                                         EC=254
                                         export PYLINT_REPORT=pylint-report-tests-chg.log
                                         grep -Ei '^tests/.*\\.py$' file-list-changed.log | xargs -r '--delimiter=\\n' nox -e lint-tests --
@@ -166,7 +166,7 @@ def call(Map options) {
                             stage('Lint Salt Full') {
                                 sh '''
                                 eval "$(pyenv init - --no-rehash)"
-                                pyenv shell 3.7.6
+                                pyenv shell 3.8.11
                                 EC=254
                                 export PYLINT_REPORT=pylint-report-salt-full.log
                                 nox -e lint-salt
@@ -179,7 +179,7 @@ def call(Map options) {
                             stage('Lint Tests Full') {
                                 sh '''
                                 eval "$(pyenv init - --no-rehash)"
-                                pyenv shell 3.7.6
+                                pyenv shell 3.8.11
                                 EC=254
                                 export PYLINT_REPORT=pylint-report-tests-full.log
                                 nox -e lint-tests
