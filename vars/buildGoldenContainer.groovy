@@ -54,8 +54,8 @@ def call(Map options) {
                             withDockerHubCredentials('docker-hub-credentials') {
                                 withPackerVersion("1.7.4") {
                                     sh """
-                                    pyenv install 3.7.6 || echo "We already have this python."
-                                    pyenv local 3.7.6
+                                    pyenv install 3.8.12 || echo "We already have this python."
+                                    pyenv local 3.8.12
                                     if [ ! -d venv ]; then
                                         python -m venv venv
                                     fi
@@ -200,8 +200,8 @@ def call(Map options) {
                                 withDockerHubCredentials('docker-hub-credentials') {
                                     withPackerVersion("1.7.4") {
                                         sh """
-                                        pyenv install 3.7.6 || echo "We already have this python."
-                                        pyenv local 3.7.6
+                                        pyenv install 3.8.12 || echo "We already have this python."
+                                        pyenv local 3.8.12
                                         if [ ! -d venv ]; then
                                             python -m venv venv
                                         fi

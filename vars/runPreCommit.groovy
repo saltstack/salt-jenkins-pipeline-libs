@@ -72,8 +72,8 @@ def call(Map options) {
             sh '''
             eval "$(pyenv init -)"
             pyenv --version
-            pyenv install --skip-existing 3.8.11
-            pyenv shell 3.8.11
+            pyenv install --skip-existing 3.8.12
+            pyenv shell 3.8.12
             python --version
             pip3 install -U nox pre-commit
             nox --version
@@ -97,7 +97,7 @@ def call(Map options) {
                         sh '''
                         set -e
                         eval "$(pyenv init - --no-rehash)"
-                        pyenv shell 3.8.11
+                        pyenv shell 3.8.12
                         pre-commit run --color always --show-diff-on-failure --from-ref "origin/${CHANGE_TARGET}" --to-ref "origin/${BRANCH_NAME}"
                         '''
                     }
@@ -106,7 +106,7 @@ def call(Map options) {
                         sh '''
                         set -e
                         eval "$(pyenv init - --no-rehash)"
-                        pyenv shell 3.8.11
+                        pyenv shell 3.8.12
                         pre-commit run --color always --show-diff-on-failure -a
                         '''
                     }
