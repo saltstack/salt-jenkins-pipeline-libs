@@ -41,10 +41,10 @@ def call(Map options) {
     if ( notify_slack_channel == '' ) {
         if (env.CHANGE_ID) {
             // This is a PR
-            notify_slack_channel = '#jenkins-prod-pr'
+            notify_slack_channel = '#salt-jenkins-pr'
         } else {
             // This is a branch build
-            notify_slack_channel = '#jenkins-prod'
+            notify_slack_channel = '#salt-jenkins'
         }
     }
 
