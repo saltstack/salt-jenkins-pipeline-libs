@@ -192,7 +192,7 @@ def call(Map options) {
                 try {
                     slack_message = "${message}\nPlease confirm or deny tests execution <${env.BUILD_URL}|here>"
                     slackSend(
-                        channel: "#golden-images",
+                        channel: "#salt-golden-images",
                         color: '#FF8243',
                         message: slack_message)
                 } catch (Exception e2) {
@@ -300,7 +300,7 @@ def call(Map options) {
                                 }
                                 message = "${message}\nPlease confirm or deny promotion <${env.BUILD_URL}|here>"
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#FF8243',
                                     message: message)
                             } catch (Exception e2) {
@@ -346,7 +346,7 @@ def call(Map options) {
                             )
                             try {
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#00FF00',
                                     message: "${distro_name}-${distro_version}-${distro_arch} AMI `${ami_image_id}` was promoted! (<${env.BUILD_URL}|open>)")
                             } catch (Exception e3) {
@@ -364,7 +364,7 @@ def call(Map options) {
                             )
                             try {
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#FF0000',
                                     message: "${distro_name}-${distro_version}-${distro_arch} AMI `${ami_image_id}` was *NOT* promoted! (<${env.BUILD_URL}|open>)")
                             } catch (Exception e5) {
@@ -384,7 +384,7 @@ def call(Map options) {
                                 }
                                 slack_message = "${slack_message}\nPlease confirm or deny promotion <${env.BUILD_URL}|here>"
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#FF8243',
                                     message: slack_message)
                             } catch (Exception e2) {
@@ -434,7 +434,7 @@ def call(Map options) {
                             )
                             try {
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#00FF00',
                                     message: "${distro_name}-${distro_version}-${distro_arch} Vagrant Box `${vagrant_box_name}(${vagrant_box_version})` was promoted! (<${env.BUILD_URL}|open>)")
                             } catch (Exception e3) {
@@ -453,7 +453,7 @@ def call(Map options) {
                             )
                             try {
                                 slackSend(
-                                    channel: "#golden-images",
+                                    channel: "#salt-golden-images",
                                     color: '#FF0000',
                                     message: "${distro_name}-${distro_version}-${distro_arch} Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was *NOT* promoted! (<${env.BUILD_URL}|open>)")
                             } catch (Exception e5) {

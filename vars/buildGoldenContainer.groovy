@@ -104,7 +104,7 @@ def call(Map options) {
                 try {
                     slack_message = "${message}\nPlease confirm or deny tests execution &lt;${env.BUILD_URL}|here&gt;"
                     slackSend(
-                        channel: "#golden-images",
+                        channel: "#salt-golden-images",
                         color: '#FF8243',
                         message: slack_message)
                 } catch (Exception e2) {
@@ -179,7 +179,7 @@ def call(Map options) {
                             }
                             message = "${message}\nPlease confirm or deny promotion &lt;${env.BUILD_URL}|here&gt;"
                             slackSend(
-                                channel: "#golden-images",
+                                channel: "#salt-golden-images",
                                 color: '#FF8243',
                                 message: message)
                         } catch (Exception e2) {
@@ -227,7 +227,7 @@ def call(Map options) {
                         )
                         try {
                             slackSend(
-                                channel: "#golden-images",
+                                channel: "#salt-golden-images",
                                 color: '#00FF00',
                                 message: "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` was promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                         } catch (Exception e3) {
@@ -245,7 +245,7 @@ def call(Map options) {
                         )
                         try {
                             slackSend(
-                                channel: "#golden-images",
+                                channel: "#salt-golden-images",
                                 color: '#FF0000',
                                 message: "${distro_name}-${distro_version}-${distro_arch} Docker Container `${container_name}` was *NOT* promoted! (&lt;${env.BUILD_URL}|open&gt;)")
                         } catch (Exception e5) {
