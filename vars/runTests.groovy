@@ -24,7 +24,7 @@ def call(Map options) {
                 ]
             ],
             parameters([
-                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
+                booleanParam(defaultValue: true, description: 'Run full test suite, including slow tests', name: 'runFull')
             ])
         ])
     }
