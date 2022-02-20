@@ -43,7 +43,6 @@ def call(Map options) {
     def String rbenv_version = options.get('rbenv_version', '2.6.3')
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
     def String notify_slack_channel = options.get('notify_slack_channel', '')
-    def String kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
     def String kitchen_verifier_file = options.get('kitchen_verifier_file', '/var/jenkins/workspace/nox-verifier.yml')
     def String kitchen_platforms_file = options.get('kitchen_platforms_file', '/var/jenkins/workspace/platforms.yml')
     def String[] extra_codecov_flags = options.get('extra_codecov_flags', [])
@@ -155,6 +154,13 @@ def call(Map options) {
     def String download_stage_name
     def String cleanup_stage_name
     def String upload_stage_name
+    def String kitchen_driver_file
+
+    if ( distro_name.startsWith('windows') ) {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver-win.yml')
+    } else {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    }
 
     if ( test_suite_name == 'full' ) {
         test_suite_name_slug = test_suite_name
