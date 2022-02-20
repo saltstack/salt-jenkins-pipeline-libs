@@ -63,6 +63,14 @@ def call(Map options) {
         extra_parts: extra_codecov_flags,
     )
 
+    def String kitchen_driver_file
+
+    if ( distro_name.startsWith('windows') ) {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver-win.yml')
+    } else {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    }
+
     if ( notify_slack_channel == '' ) {
         if (env.CHANGE_ID) {
             // This is a PR
@@ -154,13 +162,6 @@ def call(Map options) {
     def String download_stage_name
     def String cleanup_stage_name
     def String upload_stage_name
-    def String kitchen_driver_file
-
-    if ( distro_name.startsWith('windows') ) {
-        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver-win.yml')
-    } else {
-        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
-    }
 
     if ( test_suite_name == 'full' ) {
         test_suite_name_slug = test_suite_name
