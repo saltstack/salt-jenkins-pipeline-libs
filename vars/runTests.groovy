@@ -64,6 +64,14 @@ def call(Map options) {
         extra_parts: extra_codecov_flags,
     )
 
+    def String kitchen_driver_file
+
+    if ( distro_name.startsWith('windows') ) {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver-win.yml')
+    } else {
+        kitchen_driver_file = options.get('kitchen_driver_file', '/var/jenkins/workspace/driver.yml')
+    }
+
     if ( notify_slack_channel == '' ) {
         if (env.CHANGE_ID) {
             // This is a PR
