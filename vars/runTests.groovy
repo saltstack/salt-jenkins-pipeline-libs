@@ -53,6 +53,7 @@ def call(Map options) {
     def String test_suite_name = options.get('test_suite_name', 'full')
     def Boolean force_run_full = options.get('force_run_full', false)
     def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
+    def String macos_python_version = options.get('macos_python_version', '3.7')
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -246,26 +247,28 @@ def call(Map options) {
                             '''
                         }
                         try {
-                            sh """
-                            # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
-                            while find /tmp/lock_${distro_version}_${distro_arch} -mmin -120 | grep -q /tmp/lock_${distro_version}_${distro_arch}
-                            do
-                                echo 'vm creation locked, sleeping 120 seconds'
-                                sleep 120
-                            done
-                            touch /tmp/lock_${distro_version}_${distro_arch}
-                            """
-                            sh '''
-                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
-                            '''
-                            sh """
-                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
-                            fi
-                            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
-                            fi
-                            """
+                            withEnv(["MACOS_PYTHON_VERSION=${macos_python_version}"]) {
+                                sh """
+                                # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
+                                while find /tmp/lock_${distro_version}_${distro_arch} -mmin -120 | grep -q /tmp/lock_${distro_version}_${distro_arch}
+                                do
+                                    echo 'vm creation locked, sleeping 120 seconds'
+                                    sleep 120
+                                done
+                                touch /tmp/lock_${distro_version}_${distro_arch}
+                                """
+                                sh '''
+                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                '''
+                                sh """
+                                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
+                                fi
+                                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-create.log"
+                                fi
+                                """
+                            }
                         } finally {
                             sh """
                             rm -f /tmp/lock_${distro_version}_${distro_arch}
@@ -322,9 +325,11 @@ def call(Map options) {
                     def convergeVM = {
                         stage(converge_stage_name) {
                             if ( macos_build ) {
-                                sh '''
-                                ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                '''
+                                withEnv(["MACOS_PYTHON_VERSION=${macos_python_version}"]) {
+                                    sh '''
+                                    ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                    '''
+                                }
                             } else {
                                 sh '''
                                 ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
