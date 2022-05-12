@@ -105,6 +105,14 @@ def call(Map options) {
         macos_build = true
     }
 
+    def String use_spot_instances_overridden
+    if ( env.JENKINS_URL.matches(".*private-jenkins.*") ) {
+        use_spot_instances_overridden = " (Overridden. Previously set to: ${use_spot_instances})"
+        use_spot_instances = false
+    } else {
+        use_spot_instances_overridden = ""
+    }
+
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
@@ -122,7 +130,7 @@ def call(Map options) {
     Test run timeout: ${testrun_timeout} Hours
     Global Timeout: ${global_timeout} Hours
     Full Testsuite Run: ${run_full}
-    Use SPOT instances: ${use_spot_instances}
+    Use SPOT instances: ${use_spot_instances}${use_spot_instances_overridden}
     RBEnv Version: ${rbenv_version}
     Jenkins Slave Label: ${jenkins_slave_label}
     Notify Slack Channel: ${notify_slack_channel}
