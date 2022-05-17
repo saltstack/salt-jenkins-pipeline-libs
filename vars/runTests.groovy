@@ -265,37 +265,43 @@ def call(Map options) {
                 // the following timeout get's 15 minutes shaved off so that we
                 // have at least that ammount of time to download artifacts
                 timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
-                    def convergeVM = {
-                        stage(converge_stage_name) {
-                            if ( macos_build ) {
-                                withEnv(["MACOS_PYTHON_VERSION=${macos_python_version}"]) {
-                                    sh '''
-                                    ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                    '''
-                                }
-                            } else {
-                                sh '''
-                                ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                '''
-                            }
-                            sh """
-                            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
-                                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-converge.log"
-                            fi
-                            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-converge.log"
-                            fi
-                            """
-                        }
-                    }
                     try {
-                        convergeVM.call()
+                        runTestsConvergeVM(
+                            converge_stage_name,
+                            macos_build,
+                            python_version,
+                            macos_python_version,
+                            distro_version,
+                            distro_arch,
+                            distro_name,
+                            test_suite_name_slug
+                        )
                     } catch(e) {
                         // Retry creation once if converge fails
                         echo "Retrying Create VM and Converge VM"
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
-                        createVM.call()
-                        convergeVM.call()
+                        runTestsCreateVM(
+                            create_stage_name,
+                            macos_build,
+                            use_spot_instances,
+                            python_version,
+                            macos_python_version,
+                            vagrant_box_details_stage_name,
+                            distro_version,
+                            distro_arch,
+                            distro_name,
+                            test_suite_name_slug
+                        )
+                        runTestsConvergeVM(
+                            converge_stage_name,
+                            macos_build,
+                            python_version,
+                            macos_python_version,
+                            distro_version,
+                            distro_arch,
+                            distro_name,
+                            test_suite_name_slug
+                        )
                     }
 
                     def cause
