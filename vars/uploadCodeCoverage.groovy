@@ -16,9 +16,53 @@ def call(Map options) {
             retry(upload_retries) {
                 script {
                     withCredentials([[$class: 'StringBinding', credentialsId: credentials_id, variable: credentials_variable_name]]) {
-                        sh '''
+                        sh label: 'Upload Code Coverage', script: '''
                         if [ -f "${REPORT_PATH}" ]; then
-                            curl -L https://codecov.io/bash | /bin/bash -s -- -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}"
+                            n=0
+                            until [ "$n" -ge 5 ]
+                            do
+                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux --output codecov-linux; then
+                                break
+                            fi
+                            n=$((n+1))
+                            sleep 15
+                            done
+
+                            n=0
+                            until [ "$n" -ge 5 ]
+                            do
+                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM --output codecov-linux.SHA256SUM; then
+                                break
+                            fi
+                            n=$((n+1))
+                            sleep 15
+                            done
+
+                            n=0
+                            until [ "$n" -ge 5 ]
+                            do
+                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM.sig --output codecov-linux.SHA256SUM.sig; then
+                                break
+                            fi
+                            n=$((n+1))
+                            sleep 15
+                            done
+
+                            n=0
+                            until [ "$n" -ge 5 ]
+                            do
+                            if curl --max-time 30 -L https://keybase.io/codecovsecurity/pgp_keys.asc | gpg --import; then
+                                break
+                            fi
+                            n=$((n+1))
+                            sleep 15
+                            done
+
+                            gpg --verify codecov-linux.SHA256SUM.sig codecov-linux.SHA256SUM && \
+                                shasum -a 256 -c codecov-linux.SHA256SUM && \
+                                chmod +x codecov-linux || exit 1
+
+                            ./codecov-linux -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}" || exit 1
                         fi
                         '''
                     }
