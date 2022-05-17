@@ -246,7 +246,10 @@ def call(Map options) {
                 }
             }
 
-            runTestsCreateVM(
+            def Integer createExitCode = 1
+            def Integer convergeExitCode = 1
+
+            createExitCode = runTestsCreateVM(
                 create_stage_name,
                 macos_build,
                 use_spot_instances,
@@ -258,6 +261,10 @@ def call(Map options) {
                 distro_name,
                 test_suite_name_slug
             )
+            if ( createExitCode != 0 ) {
+                currentBuild.result = 'FAILURE'
+                echo "Setting currentBuild.result to ${currentBuild.result}"
+            }
 
             try {
                 // Since we reserve for spot instances for a maximum of 6 hours,
@@ -266,7 +273,7 @@ def call(Map options) {
                 // have at least that ammount of time to download artifacts
                 timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
                     try {
-                        runTestsConvergeVM(
+                        convergeExitCode = runTestsConvergeVM(
                             converge_stage_name,
                             macos_build,
                             python_version,
@@ -276,11 +283,15 @@ def call(Map options) {
                             distro_name,
                             test_suite_name_slug
                         )
+                        if ( convergeExitCode != 0 ) {
+                            currentBuild.result = 'FAILURE'
+                            echo "Setting currentBuild.result to ${currentBuild.result}"
+                        }
                     } catch(e) {
                         // Retry creation once if converge fails
                         echo "Retrying Create VM and Converge VM"
                         sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
-                        runTestsCreateVM(
+                        createExitCode = runTestsCreateVM(
                             create_stage_name,
                             macos_build,
                             use_spot_instances,
@@ -292,16 +303,25 @@ def call(Map options) {
                             distro_name,
                             test_suite_name_slug
                         )
-                        runTestsConvergeVM(
-                            converge_stage_name,
-                            macos_build,
-                            python_version,
-                            macos_python_version,
-                            distro_version,
-                            distro_arch,
-                            distro_name,
-                            test_suite_name_slug
-                        )
+                        if ( createExitCode != 0 ) {
+                            currentBuild.result = 'FAILURE'
+                            echo "Setting currentBuild.result to ${currentBuild.result}"
+                        } else {
+                            convergeExitCode = runTestsConvergeVM(
+                                converge_stage_name,
+                                macos_build,
+                                python_version,
+                                macos_python_version,
+                                distro_version,
+                                distro_arch,
+                                distro_name,
+                                test_suite_name_slug
+                            )
+                            if ( convergeExitCode != 0 ) {
+                                currentBuild.result = 'FAILURE'
+                                echo "Setting currentBuild.result to ${currentBuild.result}"
+                            }
+                        }
                     }
 
                     def cause
@@ -464,7 +484,7 @@ def call(Map options) {
                         }
                     } finally {
                         archiveArtifacts(
-                            artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
+                            artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
                             allowEmptyArchive: true
                         )
                         junit(
