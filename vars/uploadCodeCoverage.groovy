@@ -18,35 +18,41 @@ def call(Map options) {
                     withCredentials([[$class: 'StringBinding', credentialsId: credentials_id, variable: credentials_variable_name]]) {
                         sh label: 'Upload Code Coverage', script: '''
                         if [ -f "${REPORT_PATH}" ]; then
-                            n=0
-                            until [ "$n" -ge 5 ]
-                            do
-                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux --output codecov-linux; then
-                                break
+                            if [ ! -f codecov-linux ]; then
+                                n=0
+                                until [ "$n" -ge 5 ]
+                                do
+                                if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux --output codecov-linux; then
+                                    break
+                                fi
+                                n=$((n+1))
+                                sleep 15
+                                done
                             fi
-                            n=$((n+1))
-                            sleep 15
-                            done
 
-                            n=0
-                            until [ "$n" -ge 5 ]
-                            do
-                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM --output codecov-linux.SHA256SUM; then
-                                break
+                            if [ ! -f codecov-linux.SHA256SUM ]; then
+                                n=0
+                                until [ "$n" -ge 5 ]
+                                do
+                                if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM --output codecov-linux.SHA256SUM; then
+                                    break
+                                fi
+                                n=$((n+1))
+                                sleep 15
+                                done
                             fi
-                            n=$((n+1))
-                            sleep 15
-                            done
 
-                            n=0
-                            until [ "$n" -ge 5 ]
-                            do
-                            if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM.sig --output codecov-linux.SHA256SUM.sig; then
-                                break
+                            if [ ! -f codecov-linux.SHA256SUM.sig ]; then
+                                n=0
+                                until [ "$n" -ge 5 ]
+                                do
+                                if curl --max-time 30 -L https://uploader.codecov.io/latest/codecov-linux.SHA256SUM.sig --output codecov-linux.SHA256SUM.sig; then
+                                    break
+                                fi
+                                n=$((n+1))
+                                sleep 15
+                                done
                             fi
-                            n=$((n+1))
-                            sleep 15
-                            done
 
                             n=0
                             until [ "$n" -ge 5 ]
