@@ -63,12 +63,14 @@ def call(String nox_passthrough_opts,
                 if [ -s "artifacts/coverage/tests.xml" ]; then
                     mv artifacts/coverage/tests.xml artifacts/coverage/tests-${chunk_name}.xml
                 fi
+                mv artifacts/logs/runtests-*.log artifacts/logs/${chunk_name}-runtests.log || true
+                mv artifacts/xml-unittests-output/test-results-*.xml artifacts/xml-unittests-output/${chunk_name}-test-results.xml || true
                 """
                 sh """
                 # Do not error if there are no files to compress
-                xz .kitchen/logs/*-verify.log && rm .kitchen/logs/*-verify.log || true
+                xz .kitchen/logs/*-verify.log || true
                 # Do not error if there are no files to compress
-                xz artifacts/logs/runtests-*.log && rm artifacts/logs/runtests-*.log || true
+                xz artifacts/logs/${chunk_name}-runtests.log || true
                 """
                 if ( upload_test_coverage == true ) {
                     def distro_strings = [
@@ -99,9 +101,13 @@ def call(String nox_passthrough_opts,
                     }
                 }
                 archiveArtifacts(
-                    artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log",
+                    artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log*,artifacts/logs/${chunk_name}-runtests.log*",
                     allowEmptyArchive: true
                 )
+                // Once archived, delete
+                sh """
+                rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name}-runtests.log* || true
+                """
             }
         }
         stage("Re-Run Failed ${chunk_name.capitalize()} Tests ${run_type}") {
@@ -152,12 +158,14 @@ def call(String nox_passthrough_opts,
                     if [ -s "artifacts/coverage/tests.xml" ]; then
                         mv artifacts/coverage/tests.xml artifacts/coverage/tests-rerun-${chunk_name}.xml
                     fi
+                    mv artifacts/logs/runtests-*.log artifacts/logs/${chunk_name}-rerun-runtests.log || true
+                    mv artifacts/xml-unittests-output/test-results-*.xml artifacts/xml-unittests-output/${chunk_name}-rerun-test-results.xml || true
                     """
                     sh """
                     # Do not error if there are no files to compress
-                    xz .kitchen/logs/*-verify.log && rm .kitchen/logs/*-verify.log || true
+                    xz .kitchen/logs/*-verify.log || true
                     # Do not error if there are no files to compress
-                    xz artifacts/logs/runtests-*.log && rm artifacts/logs/runtests-*.log || true
+                    xz artifacts/logs/${chunk_name}-rerun-runtests.log || true
                     """
                     if ( upload_test_coverage == true ) {
                         def distro_strings = [
@@ -188,9 +196,13 @@ def call(String nox_passthrough_opts,
                         }
                     }
                     archiveArtifacts(
-                        artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log",
+                        artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/logs/${chunk_name}-rerun-runtests.log*",
                         allowEmptyArchive: true
                     )
+                    // Once archived, delete
+                    sh """
+                    rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name}-rerun-runtests.log* || true
+                    """
                 }
             }
         }
@@ -204,6 +216,10 @@ def call(String nox_passthrough_opts,
             skipPublishingChecks: true,
             testResults: 'artifacts/xml-unittests-output/*.xml'
         )
+        // Once archived, and reported, delete
+        sh '''
+        rm -rf artifacts/ || true
+        '''
         return returnStatus
     }
 }
