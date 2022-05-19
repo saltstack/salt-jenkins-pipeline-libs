@@ -342,14 +342,8 @@ def call(Map options) {
                         if (env.CHANGE_ID) {
                             // On PRs, tests for changed files(including slow), if passed, then fast tests.
                             if ( run_full ) {
-                                stage("${run_tests_stage_name} (Slow/Changed)") {
-                                    println "Not running slow tests just on changed files on full test runs"
-                                }
-                                stage("${run_tests_stage_name} (Fast)") {
-                                    println "Not running fast tests on full runs"
-                                }
                                 runTestsFull(
-                                    "${run_tests_stage_name} (Slow/Full)",
+                                    run_tests_stage_name,
                                     nox_passthrough_opts,
                                     python_version,
                                     distro_version,
@@ -358,6 +352,7 @@ def call(Map options) {
                                     test_suite_name_slug,
                                     inactivity_timeout_minutes,
                                     run_full,
+                                    "(Slow/Full)",
                                     upload_test_coverage,
                                     upload_split_test_coverage
                                 )
@@ -370,7 +365,7 @@ def call(Map options) {
                                 }
                                 withEnv(local_environ) {
                                     runTestsFull(
-                                        "${run_tests_stage_name} (Slow/Changed)",
+                                        run_tests_stage_name,
                                         "${nox_passthrough_opts} --run-slow",
                                         python_version,
                                         distro_version,
@@ -379,12 +374,13 @@ def call(Map options) {
                                         test_suite_name_slug,
                                         inactivity_timeout_minutes,
                                         run_full,
+                                        "(Slow/Changed)",
                                         upload_test_coverage,
                                         upload_split_test_coverage
                                     )
                                 }
                                 runTestsFull(
-                                    "${run_tests_stage_name} (Fast)",
+                                    run_tests_stage_name,
                                     nox_passthrough_opts,
                                     python_version,
                                     distro_version,
@@ -393,16 +389,14 @@ def call(Map options) {
                                     test_suite_name_slug,
                                     inactivity_timeout_minutes,
                                     run_full,
+                                    "(Fast/Full)",
                                     upload_test_coverage,
                                     upload_split_test_coverage
                                 )
-                                stage("${run_tests_stage_name} (Slow/Full)") {
-                                    println "Not running slow tests since we're not running the full test suite"
-                                }
                             }
                         } else {
                             runTestsFull(
-                                "${run_tests_stage_name} (Slow/Full)",
+                                run_tests_stage_name,
                                 nox_passthrough_opts,
                                 python_version,
                                 distro_version,
@@ -411,6 +405,7 @@ def call(Map options) {
                                 test_suite_name_slug,
                                 inactivity_timeout_minutes,
                                 run_full,
+                                "(Slow/Full)",
                                 upload_test_coverage,
                                 upload_split_test_coverage
                             )
