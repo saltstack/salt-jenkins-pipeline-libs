@@ -2,6 +2,7 @@
 def call(String nox_passthrough_opts,
          String test_paths,
          String chunk_name,
+         String run_type,
          String python_version,
          String distro_version,
          String distro_arch,
@@ -18,7 +19,7 @@ def call(String nox_passthrough_opts,
         local_environ = [
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths}"
         ]
-        stage("Run ${chunk_name.capitalize()} Tests") {
+        stage("Run ${chunk_name.capitalize()} Tests ${run_type}") {
             try {
                 withEnv(local_environ) {
                     withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
@@ -103,7 +104,7 @@ def call(String nox_passthrough_opts,
                 )
             }
         }
-        stage("Re-Run Failed ${chunk_name.capitalize()} Tests") {
+        stage("Re-Run Failed ${chunk_name.capitalize()} Tests ${run_type}") {
             if ( returnStatus != 0 ) {
                 local_environ = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths} --lf"
