@@ -248,6 +248,7 @@ def call(Map options) {
 
             def Integer createExitCode = 1
             def Integer convergeExitCode = 1
+            def Integer installRequirementsExitCode = 1
 
             createExitCode = runTestsCreateVM(
                 create_stage_name,
@@ -324,15 +325,82 @@ def call(Map options) {
                         }
                     }
 
-                    if (env.CHANGE_ID) {
-                        // On PRs, tests for changed files(including slow), if passed, then fast tests.
-                        if ( run_full ) {
-                            stage("${run_tests_stage_name} (Slow/Changed)") {
-                                println "Not running slow tests just on changed files on full test runs"
+                    installRequirementsExitCode = runTestsInstallRequirements(
+                        "Install Test Requirements",
+                        python_version,
+                        distro_version,
+                        distro_arch,
+                        distro_name,
+                        test_suite_name_slug
+                    )
+                    if ( installRequirementsExitCode != 0 ) {
+                        currentBuild.result = 'FAILURE'
+                        echo "Setting currentBuild.result to ${currentBuild.result}"
+                    }
+
+                    withEnv(["SKIP_INSTALL_REQUIREMENTS=1"]) {
+                        if (env.CHANGE_ID) {
+                            // On PRs, tests for changed files(including slow), if passed, then fast tests.
+                            if ( run_full ) {
+                                stage("${run_tests_stage_name} (Slow/Changed)") {
+                                    println "Not running slow tests just on changed files on full test runs"
+                                }
+                                stage("${run_tests_stage_name} (Fast)") {
+                                    println "Not running fast tests on full runs"
+                                }
+                                runTestsFull(
+                                    "${run_tests_stage_name} (Slow/Full)",
+                                    nox_passthrough_opts,
+                                    python_version,
+                                    distro_version,
+                                    distro_arch,
+                                    distro_name,
+                                    test_suite_name_slug,
+                                    inactivity_timeout_minutes,
+                                    run_full,
+                                    upload_test_coverage,
+                                    upload_split_test_coverage
+                                )
+                            } else {
+                                local_environ = [
+                                    "FORCE_FULL=false",
+                                ]
+                                if ( disable_from_filenames == false ) {
+                                    local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
+                                }
+                                withEnv(local_environ) {
+                                    runTestsFull(
+                                        "${run_tests_stage_name} (Slow/Changed)",
+                                        "${nox_passthrough_opts} --run-slow",
+                                        python_version,
+                                        distro_version,
+                                        distro_arch,
+                                        distro_name,
+                                        test_suite_name_slug,
+                                        inactivity_timeout_minutes,
+                                        run_full,
+                                        upload_test_coverage,
+                                        upload_split_test_coverage
+                                    )
+                                }
+                                runTestsFull(
+                                    "${run_tests_stage_name} (Fast)",
+                                    nox_passthrough_opts,
+                                    python_version,
+                                    distro_version,
+                                    distro_arch,
+                                    distro_name,
+                                    test_suite_name_slug,
+                                    inactivity_timeout_minutes,
+                                    run_full,
+                                    upload_test_coverage,
+                                    upload_split_test_coverage
+                                )
+                                stage("${run_tests_stage_name} (Slow/Full)") {
+                                    println "Not running slow tests since we're not running the full test suite"
+                                }
                             }
-                            stage("${run_tests_stage_name} (Fast)") {
-                                println "Not running fast tests on full runs"
-                            }
+                        } else {
                             runTestsFull(
                                 "${run_tests_stage_name} (Slow/Full)",
                                 nox_passthrough_opts,
@@ -346,59 +414,7 @@ def call(Map options) {
                                 upload_test_coverage,
                                 upload_split_test_coverage
                             )
-                        } else {
-                            local_environ = [
-                                "FORCE_FULL=false",
-                            ]
-                            if ( disable_from_filenames == false ) {
-                                local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
-                            }
-                            withEnv(local_environ) {
-                                runTestsFull(
-                                    "${run_tests_stage_name} (Slow/Changed)",
-                                    "${nox_passthrough_opts} --run-slow",
-                                    python_version,
-                                    distro_version,
-                                    distro_arch,
-                                    distro_name,
-                                    test_suite_name_slug,
-                                    inactivity_timeout_minutes,
-                                    run_full,
-                                    upload_test_coverage,
-                                    upload_split_test_coverage
-                                )
-                            }
-                            runTestsFull(
-                                "${run_tests_stage_name} (Fast)",
-                                nox_passthrough_opts,
-                                python_version,
-                                distro_version,
-                                distro_arch,
-                                distro_name,
-                                test_suite_name_slug,
-                                inactivity_timeout_minutes,
-                                run_full,
-                                upload_test_coverage,
-                                upload_split_test_coverage
-                            )
-                            stage("${run_tests_stage_name} (Slow/Full)") {
-                                println "Not running slow tests since we're not running the full test suite"
-                            }
                         }
-                    } else {
-                        runTestsFull(
-                            "${run_tests_stage_name} (Slow/Full)",
-                            nox_passthrough_opts,
-                            python_version,
-                            distro_version,
-                            distro_arch,
-                            distro_name,
-                            test_suite_name_slug,
-                            inactivity_timeout_minutes,
-                            run_full,
-                            upload_test_coverage,
-                            upload_split_test_coverage
-                        )
                     }
                 }
             } finally {
