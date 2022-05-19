@@ -63,8 +63,10 @@ def call(String nox_passthrough_opts,
                 if [ -s "artifacts/coverage/tests.xml" ]; then
                     mv artifacts/coverage/tests.xml artifacts/coverage/tests-${chunk_name}.xml
                 fi
-                mv artifacts/logs/runtests-*.log artifacts/logs/${chunk_name}-runtests.log || true
-                mv artifacts/xml-unittests-output/test-results-*.xml artifacts/xml-unittests-output/${chunk_name}-test-results.xml || true
+                mv artifacts/logs/\$(ls artifacts/logs/ | sort -r | head -n 1) artifacts/logs/${chunk_name}-runtests.log || true
+                rm artifacts/logs/runtests-*.log || true
+                mv artifacts/xml-unittests-output/\$(ls artifacts/xml-unittests-output | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name}-test-results.xml || true
+                rm artifacts/xml-unittests-output/test-results-*.xml || true
                 """
                 sh """
                 # Do not error if there are no files to compress
@@ -158,8 +160,10 @@ def call(String nox_passthrough_opts,
                     if [ -s "artifacts/coverage/tests.xml" ]; then
                         mv artifacts/coverage/tests.xml artifacts/coverage/tests-rerun-${chunk_name}.xml
                     fi
-                    mv artifacts/logs/runtests-*.log artifacts/logs/${chunk_name}-rerun-runtests.log || true
-                    mv artifacts/xml-unittests-output/test-results-*.xml artifacts/xml-unittests-output/${chunk_name}-rerun-test-results.xml || true
+                    mv artifacts/logs/\$(ls artifacts/logs/ | sort -r | head -n 1) artifacts/logs/${chunk_name}-rerun-runtests.log || true
+                    rm artifacts/logs/runtests-*.log || true
+                    mv artifacts/xml-unittests-output/\$(ls artifacts/xml-unittests-output | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name}-rerun-test-results.xml || true
+                    rm artifacts/xml-unittests-output/test-results-*.xml || true
                     """
                     sh """
                     # Do not error if there are no files to compress
