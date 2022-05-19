@@ -333,179 +333,89 @@ def call(Map options) {
                         }
                     }
 
-                    def cause
-                    def String timeout_id
-                    def String timeout_message
-                    def String original_run_tests_stage
-                    def local_environ
-
-                    def runTests = {
-                        try {
-                            timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-                                stage(run_tests_stage_name) {
-                                    withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                                        sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                                    }
-                                }
-                            }
-                        } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
-                            cause = inactivity_exception.causes.get(0)
-                            if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
-                                timeout_id = "inactivity-timeout"
-                                timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
-                                addWarningBadge(
-                                    id: timeout_id,
-                                    text: timeout_message
-                                )
-                                createSummary(
-                                    id: timeout_id,
-                                    icon: 'warning.png',
-                                    text: "<b>${timeout_message}</b>"
-                                )
-                            }
-                            throw inactivity_exception
-                        }
-                    }
                     if (env.CHANGE_ID) {
                         // On PRs, tests for changed files(including slow), if passed, then fast tests.
                         if ( run_full ) {
-                            stage("${run_tests_stage_name} (Fast)") {
-                                println "Not running just fast tests on full test runs"
-                            }
                             stage("${run_tests_stage_name} (Slow/Changed)") {
                                 println "Not running slow tests just on changed files on full test runs"
                             }
-                            original_run_tests_stage = run_tests_stage_name
-                            try {
-                                run_tests_stage_name = "${run_tests_stage_name} (Slow)"
-                                runTests.call()
-                            } finally {
-                                run_tests_stage_name = original_run_tests_stage
+                            stage("${run_tests_stage_name} (Fast)") {
+                                println "Not running fast tests on full runs"
                             }
+                            runTestsFull(
+                                "${run_tests_stage_name} (Slow/Full)",
+                                nox_passthrough_opts,
+                                python_version,
+                                distro_version,
+                                distro_arch,
+                                distro_name,
+                                test_suite_name_slug,
+                                inactivity_timeout_minutes,
+                                run_full,
+                                upload_test_coverage,
+                                upload_split_test_coverage
+                            )
                         } else {
-                            original_run_tests_stage = run_tests_stage_name
-                            try {
-                                run_tests_stage_name = "${run_tests_stage_name} (Slow/Changed)"
-                                timeout_id = "inactivity-timeout-slow-changed"
-
-                                local_environ = [
-                                    "FORCE_FULL=false",
-                                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --run-slow"
-                                ]
-                                if ( disable_from_filenames == false ) {
-                                    local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
-                                }
-
-                                withEnv(local_environ) {
-                                    runTests.call()
-                                }
-                            } finally {
-                                run_tests_stage_name = original_run_tests_stage
+                            local_environ = [
+                                "FORCE_FULL=false",
+                            ]
+                            if ( disable_from_filenames == false ) {
+                                local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
                             }
-                            try {
-                                run_tests_stage_name = "${run_tests_stage_name} (Fast)"
-                                timeout_id = "inactivity-timeout-fast"
-                                runTests.call()
-                            } finally {
-                                run_tests_stage_name = original_run_tests_stage
+                            withEnv(local_environ) {
+                                runTestsFull(
+                                    "${run_tests_stage_name} (Slow/Changed)",
+                                    "${nox_passthrough_opts} --run-slow",
+                                    python_version,
+                                    distro_version,
+                                    distro_arch,
+                                    distro_name,
+                                    test_suite_name_slug,
+                                    inactivity_timeout_minutes,
+                                    run_full,
+                                    upload_test_coverage,
+                                    upload_split_test_coverage
+                                )
                             }
-                            stage("${run_tests_stage_name} (Slow)") {
+                            runTestsFull(
+                                "${run_tests_stage_name} (Fast)",
+                                nox_passthrough_opts,
+                                python_version,
+                                distro_version,
+                                distro_arch,
+                                distro_name,
+                                test_suite_name_slug,
+                                inactivity_timeout_minutes,
+                                run_full,
+                                upload_test_coverage,
+                                upload_split_test_coverage
+                            )
+                            stage("${run_tests_stage_name} (Slow/Full)") {
                                 println "Not running slow tests since we're not running the full test suite"
                             }
                         }
                     } else {
-                        runTests.call()
+                        runTestsFull(
+                            "${run_tests_stage_name} (Slow/Full)",
+                            nox_passthrough_opts,
+                            python_version,
+                            distro_version,
+                            distro_arch,
+                            distro_name,
+                            test_suite_name_slug,
+                            inactivity_timeout_minutes,
+                            run_full,
+                            upload_test_coverage,
+                            upload_split_test_coverage
+                        )
                     }
                 }
             } finally {
-                try {
-                    sh """
-                    if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
-                        mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-verify.log"
-                    fi
-                    if [ -s ".kitchen/logs/kitchen.log" ]; then
-                        mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-verify.log"
-                    fi
-                    """
-
-                    // Let's report about known problems found
-                    def List<String> conditions_found = []
-                    reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-verify.log")
-
-                    stage(download_stage_name) {
-                        withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
-                            sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
-                        }
-                        sh """
-                        if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
-                            mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-download.log"
-                        fi
-                        if [ -s ".kitchen/logs/kitchen.log" ]; then
-                            mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-download.log"
-                        fi
-                        """
-                    }
-
-                    sh """
-                    # Do not error if there are no files to compress
-                    xz .kitchen/logs/*-verify.log || true
-                    # Do not error if there are no files to compress
-                    xz artifacts/logs/runtests-* || true
-                    """
-                } finally {
-                    try {
-                        stage(cleanup_stage_name) {
-                            sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                        }
-                        if ( upload_test_coverage == true ) {
-                            stage(upload_stage_name) {
-                                if ( run_full ) {
-                                    def distro_strings = [
-                                        distro_name,
-                                        distro_version,
-                                        distro_arch
-                                    ]
-                                    def report_strings = (
-                                        [python_version] + nox_env_name.split('-') + extra_codecov_flags
-                                    ).flatten()
-                                    if ( upload_split_test_coverage ) {
-                                        uploadCodeCoverage(
-                                            report_path: 'artifacts/coverage/tests.xml',
-                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                                            report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
-                                        )
-                                        uploadCodeCoverage(
-                                            report_path: 'artifacts/coverage/salt.xml',
-                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                            report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
-                                        )
-                                    } else {
-                                        uploadCodeCoverage(
-                                            report_path: 'artifacts/coverage/salt.xml',
-                                            report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                                            report_flags: ([distro_strings.join('')] + report_strings).flatten()
-                                        )
-                                    }
-                                }
-                            }
-                        } else {
-                            echo "Code coverage uploads disabled."
-                        }
-                    } finally {
-                        archiveArtifacts(
-                            artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
-                            allowEmptyArchive: true
-                        )
-                        junit(
-                            keepLongStdio: true,
-                            skipPublishingChecks: true,
-                            testResults: 'artifacts/xml-unittests-output/*.xml'
-                        )
-                    }
+                stage(cleanup_stage_name) {
+                    sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                 }
             }
         }
     }
-
 }
 // vim: ft=groovy ts=4 sts=4 et
