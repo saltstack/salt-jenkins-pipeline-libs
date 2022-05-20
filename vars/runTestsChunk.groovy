@@ -20,6 +20,7 @@ def call(String nox_passthrough_opts,
             "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths}"
         ]
         stage("Run ${chunk_name.capitalize()} Tests ${run_type}") {
+            deleteRemoteArtifactsDir()
             try {
                 withEnv(local_environ) {
                     withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
@@ -114,6 +115,7 @@ def call(String nox_passthrough_opts,
         }
         stage("Re-Run Failed ${chunk_name.capitalize()} Tests ${run_type}") {
             if ( returnStatus != 0 ) {
+                deleteRemoteArtifactsDir()
                 local_environ = [
                     "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths} --lf"
                 ]
