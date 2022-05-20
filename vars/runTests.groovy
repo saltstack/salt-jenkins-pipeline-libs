@@ -348,10 +348,11 @@ def call(Map options) {
                     }
 
                     withEnv(["SKIP_INSTALL_REQUIREMENTS=1"]) {
+                        def runTestsFullReturnCode = 0
                         if (env.CHANGE_ID) {
                             // On PRs, tests for changed files(including slow), if passed, then fast tests.
                             if ( run_full ) {
-                                runTestsFull(
+                                runTestsFullReturnCode = runTestsFull(
                                     run_tests_stage_name,
                                     nox_passthrough_opts,
                                     python_version,
@@ -365,6 +366,9 @@ def call(Map options) {
                                     upload_test_coverage,
                                     upload_split_test_coverage
                                 )
+                                if ( runTestsFullReturnCode != 0 ) {
+                                    error("Failed To ${run_tests_stage_name} (Slow/Full)")
+                                }
                             } else {
                                 local_environ = [
                                     "FORCE_FULL=false",
@@ -373,7 +377,7 @@ def call(Map options) {
                                     local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
                                 }
                                 withEnv(local_environ) {
-                                    runTestsFull(
+                                    runTestsFullReturnCode = runTestsFull(
                                         run_tests_stage_name,
                                         "${nox_passthrough_opts} --run-slow",
                                         python_version,
@@ -388,7 +392,12 @@ def call(Map options) {
                                         upload_split_test_coverage
                                     )
                                 }
-                                runTestsFull(
+
+                                if ( runTestsFullReturnCode != 0 ) {
+                                    error("Failed To ${run_tests_stage_name} (Slow/Changed)")
+                                }
+
+                                runTestsFullReturnCode = runTestsFull(
                                     run_tests_stage_name,
                                     nox_passthrough_opts,
                                     python_version,
@@ -402,9 +411,13 @@ def call(Map options) {
                                     upload_test_coverage,
                                     upload_split_test_coverage
                                 )
+
+                                if ( runTestsFullReturnCode != 0 ) {
+                                    error("Failed To ${run_tests_stage_name} (Fast/Full)")
+                                }
                             }
                         } else {
-                            runTestsFull(
+                            runTestsFullReturnCode = runTestsFull(
                                 run_tests_stage_name,
                                 nox_passthrough_opts,
                                 python_version,
@@ -418,6 +431,9 @@ def call(Map options) {
                                 upload_test_coverage,
                                 upload_split_test_coverage
                             )
+                            if ( runTestsFullReturnCode != 0 ) {
+                                error("Failed To ${run_tests_stage_name} (Slow/Full)")
+                            }
                         }
                     }
                 }
