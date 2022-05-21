@@ -6,7 +6,8 @@ def call(Map options) {
         properties([
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
             parameters([
-                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull')
+                booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull'),
+                booleanParam(defaultValue: false, description: 'Re-run failed tests at the end of the test run', name: 'reRunFailedTests')
             ])
         ])
     } else {
@@ -24,11 +25,13 @@ def call(Map options) {
                 ]
             ],
             parameters([
-                booleanParam(defaultValue: true, description: 'Run full test suite, including slow tests', name: 'runFull')
+                booleanParam(defaultValue: true, description: 'Run full test suite, including slow tests', name: 'runFull'),
+                booleanParam(defaultValue: false, description: 'Re-run failed tests at the end of the test run', name: 'reRunFailedTests')
             ])
         ])
     }
     run_full = params.runFull
+    rerun_failed_tests = params.reRunFailedTests
 
     def env = options.get('env')
     def String distro_name = options.get('distro_name')
@@ -362,6 +365,7 @@ def call(Map options) {
                                     test_suite_name_slug,
                                     inactivity_timeout_minutes,
                                     run_full,
+                                    rerun_failed_tests,
                                     "(Slow/Full)",
                                     upload_test_coverage,
                                     upload_split_test_coverage
@@ -395,6 +399,7 @@ def call(Map options) {
                                         test_suite_name_slug,
                                         inactivity_timeout_minutes,
                                         run_full,
+                                        rerun_failed_tests,
                                         "(Slow/Changed)",
                                         upload_test_coverage,
                                         upload_split_test_coverage
@@ -415,6 +420,7 @@ def call(Map options) {
                                     test_suite_name_slug,
                                     inactivity_timeout_minutes,
                                     run_full,
+                                    rerun_failed_tests,
                                     "(Fast/Full)",
                                     upload_test_coverage,
                                     upload_split_test_coverage
@@ -435,6 +441,7 @@ def call(Map options) {
                                 test_suite_name_slug,
                                 inactivity_timeout_minutes,
                                 run_full,
+                                rerun_failed_tests,
                                 "(Slow/Full)",
                                 upload_test_coverage,
                                 upload_split_test_coverage

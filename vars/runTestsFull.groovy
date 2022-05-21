@@ -8,6 +8,7 @@ def call(String run_tests_stage_name,
          String test_suite_name_slug,
          Integer inactivity_timeout_minutes,
          Boolean run_full,
+         Boolean rerun_failed_tests,
          String run_type,
          Boolean upload_test_coverage,
          Boolean upload_split_test_coverage) {
@@ -42,7 +43,8 @@ def call(String run_tests_stage_name,
                 distro_name,
                 test_suite_name_slug,
                 upload_test_coverage,
-                upload_split_test_coverage
+                upload_split_test_coverage,
+                rerun_failed_tests
             )
             returnStatus = returnStatus + chunkReturnStatus
             if ( chunkReturnStatus != 0 && run_full == false ) {
@@ -64,7 +66,8 @@ def call(String run_tests_stage_name,
                 distro_name,
                 test_suite_name_slug,
                 upload_test_coverage,
-                upload_split_test_coverage
+                upload_split_test_coverage,
+                rerun_failed_tests
             )
             returnStatus = returnStatus + chunkReturnStatus
             if ( chunkReturnStatus != 0 && run_full == false ) {
@@ -86,7 +89,8 @@ def call(String run_tests_stage_name,
                 distro_name,
                 test_suite_name_slug,
                 upload_test_coverage,
-                upload_split_test_coverage
+                upload_split_test_coverage,
+                rerun_failed_tests
             )
             returnStatus = returnStatus + chunkReturnStatus
             if ( chunkReturnStatus != 0 && run_full == false ) {
@@ -105,7 +109,8 @@ def call(String run_tests_stage_name,
                 distro_name,
                 test_suite_name_slug,
                 upload_test_coverage,
-                upload_split_test_coverage
+                upload_split_test_coverage,
+                rerun_failed_tests
             )
             returnStatus = returnStatus + chunkReturnStatus
             if ( chunkReturnStatus != 0 && run_full == false ) {
