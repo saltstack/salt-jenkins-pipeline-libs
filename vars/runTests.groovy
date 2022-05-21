@@ -367,10 +367,18 @@ def call(Map options) {
                                 if ( disable_from_filenames == false ) {
                                     local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
                                 }
+                                /*
+                                 When running the test suite it chunks, specially when running against
+                                 the changed files, some of the test groups might not collect any test
+                                 and Jenkins does not help with getting the exit code from scripts.
+                                 This is where ``pytest-custom-exit-code` and `--suppress-no-test-exit-code`
+                                 comes in.
+                                 It allows exiting with a 0 exit code when no tests are collected.
+                                */
                                 withEnv(local_environ) {
                                     runTestsFullReturnCode = runTestsFull(
                                         run_tests_stage_name,
-                                        "${nox_passthrough_opts} --run-slow",
+                                        "${nox_passthrough_opts} --run-slow --suppress-no-test-exit-code",
                                         python_version,
                                         distro_version,
                                         distro_arch,
