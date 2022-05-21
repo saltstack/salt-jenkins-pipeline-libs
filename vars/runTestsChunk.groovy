@@ -9,7 +9,8 @@ def call(String nox_passthrough_opts,
          String distro_name,
          String test_suite_name_slug,
          Boolean upload_test_coverage,
-         Boolean upload_split_test_coverage) {
+         Boolean upload_split_test_coverage,
+         Boolean rerun_failed_tests) {
 
     def Integer returnStatus = 1;
 
@@ -34,6 +35,9 @@ def call(String nox_passthrough_opts,
             } catch (run_error) {
                 echo "Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests."
                 returnStatus = 1
+                if ( rerun_failed_tests == false ) {
+                    throw run_error
+                }
             } finally {
                 sh """
                 if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
@@ -115,7 +119,7 @@ def call(String nox_passthrough_opts,
                 rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name}-runtests.log* || true
                 """
 
-                if ( returnStatus != 0 ) {
+                if ( returnStatus != 0 && rerun_failed_tests == true ) {
                     deleteRemoteArtifactsDir()
                     local_environ = [
                         "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths} --lf"
@@ -238,7 +242,11 @@ def call(String nox_passthrough_opts,
                     try {
                         if ( returnStatus != 0 ) {
                             currentBuild.result = 'FAILURE'
-                            error "Failed to run(and re-run failed) ${chunk_name.capitalize()} Tests ${run_type}."
+                            if ( rerun_failed_tests == true ) {
+                                error "Failed to run(and re-run failed) ${chunk_name.capitalize()} Tests ${run_type}."
+                            } else {
+                                error "Failed to run ${chunk_name.capitalize()} Tests ${run_type}."
+                            }
                         }
                     } finally {
                         return returnStatus
