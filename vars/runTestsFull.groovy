@@ -125,6 +125,7 @@ def call(String run_tests_stage_name,
         }
     } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException inactivity_exception) { // timeout reached
         cause = inactivity_exception.causes.get(0)
+        echo "Timeout Exception Caught. Cause ${cause}: ${inactivity_exception}"
         if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
             timeout_id = "inactivity-timeout"
             timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
