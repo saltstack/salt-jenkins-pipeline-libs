@@ -452,6 +452,23 @@ def call(Map options) {
                         }
                     }
                 }
+            } catch(org.jenkinsci.plugins.workflow.steps.FlowInterruptedException global_timeout_exception) { // timeout reached
+                cause = global_timeout_exception.causes.get(0)
+                echo "Timeout Exception Caught. Cause ${cause}: ${global_timeout_exception}"
+                if (cause instanceof org.jenkinsci.plugins.workflow.steps.TimeoutStepExecution.ExceededTimeout) {
+                    timeout_id = "inactivity-timeout"
+                    timeout_message = "No output was seen for ${inactivity_timeout_minutes} minutes. Aborted ${run_tests_stage_name}."
+                    addWarningBadge(
+                        id: timeout_id,
+                        text: timeout_message
+                    )
+                    createSummary(
+                        id: timeout_id,
+                        icon: 'warning.png',
+                        text: "<b>${timeout_message}</b>"
+                    )
+                }
+                throw global_timeout_exception
             } finally {
                 stage(cleanup_stage_name) {
                     sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
