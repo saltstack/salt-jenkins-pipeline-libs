@@ -16,13 +16,13 @@ def call(String create_stage_name,
         try {
             if ( macos_build ) {
                 stage(vagrant_box_details_stage_name) {
-                    sh '''
+                    sh label: 'Kitchen Diagnose VM', script: '''
                     bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM | grep 'box'; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                     '''
                 }
                 try {
                     withEnv(["MACOS_PYTHON_VERSION=${macos_python_version}"]) {
-                        sh """
+                        sh label: 'Wait for other vagrant box downloads', script: """
                         # wait at most 120 minutes for the other job to finish downloading/creating the vagrant box
                         while find /tmp/lock_${distro_version}_${distro_arch} -mmin -120 | grep -q /tmp/lock_${distro_version}_${distro_arch}
                         do
@@ -31,10 +31,10 @@ def call(String create_stage_name,
                         done
                         touch /tmp/lock_${distro_version}_${distro_arch}
                         """
-                        sh '''
+                        sh label: 'Create VM', script: '''
                         bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                         '''
-                        sh """
+                        sh label: 'Rename logs', script: """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                         fi
@@ -45,25 +45,25 @@ def call(String create_stage_name,
                     }
                     returnStatus = 0
                 } finally {
-                    sh """
+                    sh label: 'Remove vagrant box download lock file', script: """
                     rm -f /tmp/lock_${distro_version}_${distro_arch}
                     """
                 }
             } else {
                 retry(3) {
                     if ( use_spot_instances ) {
-                        sh '''
+                        sh label: 'Create SPOT VM', script: '''
                         cp -f ~/workspace/spot.yml .kitchen.local.yml
                         t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                         bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                         '''
                     } else {
-                        sh '''
+                        sh label: 'Create VM', script: '''
                         t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
                         bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                         '''
                     }
-                    sh """
+                    sh label: 'Rename logs', script: """
                     if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                         mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-create.log"
                     fi
@@ -74,7 +74,7 @@ def call(String create_stage_name,
                     returnStatus = 0
                 }
                 try {
-                    sh '''
+                    sh label: 'Kitchen Diagnose VM', script: '''
                     bundle exec kitchen diagnose $TEST_SUITE-$TEST_PLATFORM > kitchen-diagnose-info.txt
                     grep 'image_id:' kitchen-diagnose-info.txt
                     grep 'instance_type:' -A5 kitchen-diagnose-info.txt
