@@ -14,16 +14,16 @@ def call(String converge_stage_name,
         try {
             if ( macos_build ) {
                 withEnv(["MACOS_PYTHON_VERSION=${macos_python_version}"]) {
-                    sh '''
+                    sh label: 'Converge VM', script: '''
                     ssh-agent /bin/bash -xc 'ssh-add ~/.vagrant.d/insecure_private_key; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                     '''
                 }
             } else {
-                sh '''
+                sh label: 'Converge VM', script: '''
                 ssh-agent /bin/bash -xc 'ssh-add ~/.ssh/kitchen.pem; bundle exec kitchen converge $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                 '''
             }
-            sh """
+            sh label: 'Rename logs', script: """
             if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                 mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-converge.log"
             fi
