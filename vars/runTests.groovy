@@ -221,7 +221,7 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
-                sh 'git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true'
+                sh label: 'Clone', script: 'git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true'
                 checkout scm
             }
 
@@ -229,7 +229,7 @@ def call(Map options) {
             stage(setup_stage_name) {
                 try {
                     withEnv(["USE_STATIC_REQUIREMENTS=0"]) {
-                        sh '''
+                        sh label: 'Write Salt version', script: '''
                         python setup.py write_salt_version
                         '''
                     }
@@ -237,7 +237,7 @@ def call(Map options) {
                     println "Failed to write the 'salt/_version.py' file: ${write_salt_version_error}"
                 }
                 try {
-                    sh '''
+                    sh label: 'Set bundle install lock file', script: '''
                     # wait at most 15 minutes for other jobs to finish taking care of bundle installs
                     while find /tmp/lock_bundle -mmin -15 | grep -q /tmp/lock_bundle
                     do
@@ -247,12 +247,12 @@ def call(Map options) {
                     touch /tmp/lock_bundle
                     '''
                     if ( macos_build ) {
-                        sh 'bundle install --with vagrant --without ec2 windows docker'
+                        sh label: 'Bundle Install', script: 'bundle install --with vagrant --without ec2 windows docker'
                     } else {
-                        sh 'bundle install --with ec2 windows --without docker vagrant'
+                        sh label: 'Bundle Install', script: 'bundle install --with ec2 windows --without docker vagrant'
                     }
                 } finally {
-                    sh '''
+                    sh label: 'Remove bundle install lock file', script: '''
                     rm -f /tmp/lock_bundle
                     '''
                 }
@@ -303,7 +303,7 @@ def call(Map options) {
                     } catch(e) {
                         // Retry creation once if converge fails
                         echo "Retrying Create VM and Converge VM"
-                        sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
+                        sh label: 'Destroy VM', script: 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM'
                         createExitCode = runTestsCreateVM(
                             create_stage_name,
                             macos_build,
@@ -471,7 +471,7 @@ def call(Map options) {
                 throw global_timeout_exception
             } finally {
                 stage(cleanup_stage_name) {
-                    sh 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    sh label: 'Destroy VM', script: 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                 }
             }
         }

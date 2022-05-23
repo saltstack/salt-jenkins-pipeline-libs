@@ -39,7 +39,7 @@ def call(String nox_passthrough_opts,
                     throw run_error
                 }
             } finally {
-                sh """
+                sh label: 'Rename logs', script: """
                 if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                     mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-${chunk_name}-verify.log"
                 fi
@@ -55,7 +55,7 @@ def call(String nox_passthrough_opts,
                 withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
                     sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                 }
-                sh """
+                sh label: 'Rename logs', script: """
                 if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                     mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-${chunk_name}-download.log"
                 fi
@@ -76,7 +76,7 @@ def call(String nox_passthrough_opts,
                 mv artifacts/xml-unittests-output/\$(ls artifacts/xml-unittests-output | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name}-test-results.xml || true
                 rm artifacts/xml-unittests-output/test-results-*.xml || true
                 """
-                sh """
+                sh label: 'Compress logs', script: """
                 # Do not error if there are no files to compress
                 xz .kitchen/logs/*-verify.log || true
                 # Do not error if there are no files to compress
@@ -115,7 +115,7 @@ def call(String nox_passthrough_opts,
                     allowEmptyArchive: true
                 )
                 // Once archived, delete
-                sh """
+                sh label: 'Delete archived logs', script: """
                 rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name}-runtests.log* || true
                 """
 
@@ -139,7 +139,7 @@ def call(String nox_passthrough_opts,
                         returnStatus = 1
                         throw rerun_error
                     } finally {
-                        sh """
+                        sh label: 'Rename logs', script: """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-${chunk_name}-rerun-verify.log"
                         fi
@@ -155,7 +155,7 @@ def call(String nox_passthrough_opts,
                         withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
                             sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                         }
-                        sh """
+                        sh label: 'Rename logs', script: """
                         if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
                             mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-${chunk_name}-rerun-download.log"
                         fi
@@ -176,7 +176,7 @@ def call(String nox_passthrough_opts,
                         mv artifacts/xml-unittests-output/\$(ls artifacts/xml-unittests-output | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name}-rerun-test-results.xml || true
                         rm artifacts/xml-unittests-output/test-results-*.xml || true
                         """
-                        sh """
+                        sh label: 'Compress logs', script: """
                         # Do not error if there are no files to compress
                         xz .kitchen/logs/*-verify.log || true
                         # Do not error if there are no files to compress
@@ -215,7 +215,7 @@ def call(String nox_passthrough_opts,
                             allowEmptyArchive: true
                         )
                         // Once archived, delete
-                        sh """
+                        sh label: 'Delete archived logs', script: """
                         rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name}-rerun-runtests.log* || true
                         """
                     }
@@ -236,7 +236,7 @@ def call(String nox_passthrough_opts,
                     )
                 } finally {
                     // Once archived, and reported, delete
-                    sh '''
+                    sh label: 'Delete downloaded artifacts', script: '''
                     rm -rf artifacts/ || true
                     '''
                     try {
