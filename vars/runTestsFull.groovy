@@ -26,12 +26,12 @@ def call(String run_tests_stage_name,
     def List<String> ignore_paths = []
 
     try {
+        chunk_name = "unit"
+        test_paths = ["tests/unit", "tests/pytests/unit"]
+        test_paths.each { path ->
+            ignore_paths << "--ignore=${path}"
+        }
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-            chunk_name = "unit"
-            test_paths = ["tests/unit", "tests/pytests/unit"]
-            test_paths.each { path ->
-                ignore_paths << "--ignore=${path}"
-            }
             chunkReturnStatus = runTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
@@ -50,11 +50,13 @@ def call(String run_tests_stage_name,
             if ( chunkReturnStatus != 0 && run_full == false ) {
                 error("Failed to run ${chunk_name} tests")
             }
-            chunk_name = "functional"
-            test_paths = ["tests/pytests/functional"]
-            test_paths.each { path ->
-                ignore_paths << "--ignore=${path}"
-            }
+        }
+        chunk_name = "functional"
+        test_paths = ["tests/pytests/functional"]
+        test_paths.each { path ->
+            ignore_paths << "--ignore=${path}"
+        }
+        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
             chunkReturnStatus = runTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
@@ -73,11 +75,13 @@ def call(String run_tests_stage_name,
             if ( chunkReturnStatus != 0 && run_full == false ) {
                 error("Failed to run ${chunk_name} tests")
             }
-            chunk_name = "scenarios"
-            test_paths = ["tests/pytests/scenarios"]
-            test_paths.each { path ->
-                ignore_paths << "--ignore=${path}"
-            }
+        }
+        chunk_name = "scenarios"
+        test_paths = ["tests/pytests/scenarios"]
+        test_paths.each { path ->
+            ignore_paths << "--ignore=${path}"
+        }
+        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
             chunkReturnStatus = runTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
@@ -96,8 +100,10 @@ def call(String run_tests_stage_name,
             if ( chunkReturnStatus != 0 && run_full == false ) {
                 error("Failed to run ${chunk_name} tests")
             }
-            chunk_name = "integration"
-            test_paths = ignore_paths
+        }
+        chunk_name = "integration"
+        test_paths = ignore_paths
+        timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
             chunkReturnStatus = runTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
