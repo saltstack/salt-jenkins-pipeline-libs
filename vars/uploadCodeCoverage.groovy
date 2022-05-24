@@ -72,7 +72,7 @@ def call(Map options) {
                                 shasum -a 256 -c codecov-linux.SHA256SUM && \
                                 chmod +x codecov-linux || exit 1
 
-                            ./codecov-linux -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" ${REPORT_FLAGS} || exit 1
+                            ./codecov-linux --verbose -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" ${REPORT_FLAGS} || exit 1
                         fi
                         '''
                     }
