@@ -10,24 +10,36 @@ def call(String stage_name,
 
     stage(stage_name) {
         try {
-            withEnv(["DONT_DOWNLOAD_ARTEFACTS=1", "ONLY_INSTALL_REQUIREMENTS=1"]){
-                sh label: 'Install test requirements', script: 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
+            catchError(
+                buildResult: 'SUCCESS',
+                stageResult: 'FAILURE',
+                message: "Failed to install the test requirements"
+            ) {
+                withEnv(["DONT_DOWNLOAD_ARTEFACTS=1", "ONLY_INSTALL_REQUIREMENTS=1"]){
+                    sh(
+                        label: 'Install test requirements',
+                        script: 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM'
+                    )
+                }
+                returnStatus = 0
             }
-            sh label: 'Rename logs', script: """
-            if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
-                mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-install-requirements.log"
-            fi
-            if [ -s ".kitchen/logs/kitchen.log" ]; then
-                mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-install-requirements.log"
-            fi
-            """
-            returnStatus = 0
         } finally {
-            archiveArtifacts(
-                artifacts: ".kitchen/logs/*-install-requirements.log",
-                allowEmptyArchive: true
-            )
-            return returnStatus
+            try {
+                sh label: 'Rename install requirements logs', script: """
+                if [ -s ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ]; then
+                    mv ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}.log" ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-install-requirements.log"
+                fi
+                if [ -s ".kitchen/logs/kitchen.log" ]; then
+                    mv ".kitchen/logs/kitchen.log" ".kitchen/logs/kitchen-${test_suite_name_slug}-install-requirements.log"
+                fi
+                """
+                archiveArtifacts(
+                    artifacts: ".kitchen/logs/*-install-requirements.log",
+                    allowEmptyArchive: true
+                )
+            } finally {
+                return returnStatus
+            }
         }
     }
 }
