@@ -348,13 +348,88 @@ def call(Map options) {
                     if ( installRequirementsExitCode != 0 ) {
                         currentBuild.result = 'FAILURE'
                         echo "Setting currentBuild.result to ${currentBuild.result}"
-                    }
+                    } else {
+                        withEnv(["SKIP_INSTALL_REQUIREMENTS=1"]) {
+                            def runTestsFullReturnCode = 0
+                            if (env.CHANGE_ID) {
+                                // On PRs, tests for changed files(including slow), if passed, then fast tests.
+                                if ( run_full ) {
+                                    runTestsFullReturnCode = runTestsFull(
+                                        run_tests_stage_name,
+                                        nox_passthrough_opts,
+                                        python_version,
+                                        distro_version,
+                                        distro_arch,
+                                        distro_name,
+                                        test_suite_name_slug,
+                                        inactivity_timeout_minutes,
+                                        run_full,
+                                        rerun_failed_tests,
+                                        "(Slow/Full)",
+                                        upload_test_coverage,
+                                        upload_split_test_coverage
+                                    )
+                                    if ( runTestsFullReturnCode != 0 ) {
+                                        error("Failed To ${run_tests_stage_name} (Slow/Full)")
+                                    }
+                                } else {
+                                    local_environ = [
+                                        "FORCE_FULL=false",
+                                    ]
+                                    if ( disable_from_filenames == false ) {
+                                        local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
+                                    }
+                                    /*
+                                     When running the test suite it chunks, specially when running against
+                                     the changed files, some of the test groups might not collect any test
+                                     and Jenkins does not help with getting the exit code from scripts.
+                                     This is where ``pytest-custom-exit-code` and `--suppress-no-test-exit-code`
+                                     comes in.
+                                     It allows exiting with a 0 exit code when no tests are collected.
+                                    */
+                                    withEnv(local_environ) {
+                                        runTestsFullReturnCode = runTestsFull(
+                                            run_tests_stage_name,
+                                            "${nox_passthrough_opts} --run-slow --suppress-no-test-exit-code",
+                                            python_version,
+                                            distro_version,
+                                            distro_arch,
+                                            distro_name,
+                                            test_suite_name_slug,
+                                            inactivity_timeout_minutes,
+                                            run_full,
+                                            rerun_failed_tests,
+                                            "(Slow/Changed)",
+                                            upload_test_coverage,
+                                            upload_split_test_coverage
+                                        )
+                                    }
 
-                    withEnv(["SKIP_INSTALL_REQUIREMENTS=1"]) {
-                        def runTestsFullReturnCode = 0
-                        if (env.CHANGE_ID) {
-                            // On PRs, tests for changed files(including slow), if passed, then fast tests.
-                            if ( run_full ) {
+                                    if ( runTestsFullReturnCode != 0 ) {
+                                        error("Failed To ${run_tests_stage_name} (Slow/Changed)")
+                                    }
+
+                                    runTestsFullReturnCode = runTestsFull(
+                                        run_tests_stage_name,
+                                        nox_passthrough_opts,
+                                        python_version,
+                                        distro_version,
+                                        distro_arch,
+                                        distro_name,
+                                        test_suite_name_slug,
+                                        inactivity_timeout_minutes,
+                                        run_full,
+                                        rerun_failed_tests,
+                                        "(Fast/Full)",
+                                        upload_test_coverage,
+                                        upload_split_test_coverage
+                                    )
+
+                                    if ( runTestsFullReturnCode != 0 ) {
+                                        error("Failed To ${run_tests_stage_name} (Fast/Full)")
+                                    }
+                                }
+                            } else {
                                 runTestsFullReturnCode = runTestsFull(
                                     run_tests_stage_name,
                                     nox_passthrough_opts,
@@ -373,81 +448,6 @@ def call(Map options) {
                                 if ( runTestsFullReturnCode != 0 ) {
                                     error("Failed To ${run_tests_stage_name} (Slow/Full)")
                                 }
-                            } else {
-                                local_environ = [
-                                    "FORCE_FULL=false",
-                                ]
-                                if ( disable_from_filenames == false ) {
-                                    local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
-                                }
-                                /*
-                                 When running the test suite it chunks, specially when running against
-                                 the changed files, some of the test groups might not collect any test
-                                 and Jenkins does not help with getting the exit code from scripts.
-                                 This is where ``pytest-custom-exit-code` and `--suppress-no-test-exit-code`
-                                 comes in.
-                                 It allows exiting with a 0 exit code when no tests are collected.
-                                */
-                                withEnv(local_environ) {
-                                    runTestsFullReturnCode = runTestsFull(
-                                        run_tests_stage_name,
-                                        "${nox_passthrough_opts} --run-slow --suppress-no-test-exit-code",
-                                        python_version,
-                                        distro_version,
-                                        distro_arch,
-                                        distro_name,
-                                        test_suite_name_slug,
-                                        inactivity_timeout_minutes,
-                                        run_full,
-                                        rerun_failed_tests,
-                                        "(Slow/Changed)",
-                                        upload_test_coverage,
-                                        upload_split_test_coverage
-                                    )
-                                }
-
-                                if ( runTestsFullReturnCode != 0 ) {
-                                    error("Failed To ${run_tests_stage_name} (Slow/Changed)")
-                                }
-
-                                runTestsFullReturnCode = runTestsFull(
-                                    run_tests_stage_name,
-                                    nox_passthrough_opts,
-                                    python_version,
-                                    distro_version,
-                                    distro_arch,
-                                    distro_name,
-                                    test_suite_name_slug,
-                                    inactivity_timeout_minutes,
-                                    run_full,
-                                    rerun_failed_tests,
-                                    "(Fast/Full)",
-                                    upload_test_coverage,
-                                    upload_split_test_coverage
-                                )
-
-                                if ( runTestsFullReturnCode != 0 ) {
-                                    error("Failed To ${run_tests_stage_name} (Fast/Full)")
-                                }
-                            }
-                        } else {
-                            runTestsFullReturnCode = runTestsFull(
-                                run_tests_stage_name,
-                                nox_passthrough_opts,
-                                python_version,
-                                distro_version,
-                                distro_arch,
-                                distro_name,
-                                test_suite_name_slug,
-                                inactivity_timeout_minutes,
-                                run_full,
-                                rerun_failed_tests,
-                                "(Slow/Full)",
-                                upload_test_coverage,
-                                upload_split_test_coverage
-                            )
-                            if ( runTestsFullReturnCode != 0 ) {
-                                error("Failed To ${run_tests_stage_name} (Slow/Full)")
                             }
                         }
                     }
