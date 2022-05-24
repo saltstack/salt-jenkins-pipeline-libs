@@ -6,7 +6,7 @@ def call(String stage_name,
          String distro_name,
          String test_suite_name_slug) {
 
-    def Integer returnStatus = 1;
+    def Integer returnStatus = 0;
 
     stage(stage_name) {
         try {
@@ -22,6 +22,10 @@ def call(String stage_name,
             fi
             """
             returnStatus = 0
+        } catch (error) {
+            returnStatus = 1
+            error "Failed to install the test requirements"
+            throw error
         } finally {
             archiveArtifacts(
                 artifacts: ".kitchen/logs/*-install-requirements.log",
