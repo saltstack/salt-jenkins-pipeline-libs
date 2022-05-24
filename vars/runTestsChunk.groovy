@@ -95,18 +95,18 @@ def call(String nox_passthrough_opts,
                         uploadCodeCoverage(
                             report_path: "artifacts/coverage/tests-${chunk_name}.xml",
                             report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-tests",
-                            report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                            report_flags: ([distro_strings.join('-')] + report_strings + ['tests']).flatten()
                         )
                         uploadCodeCoverage(
                             report_path: "artifacts/coverage/salt-${chunk_name}.xml",
                             report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                            report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                            report_flags: ([distro_strings.join('-')] + report_strings + ['salt']).flatten()
                         )
                     } else {
                         uploadCodeCoverage(
                             report_path: "artifacts/coverage/salt-${chunk_name}.xml",
                             report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-salt",
-                            report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                            report_flags: ([distro_strings.join('-')] + report_strings).flatten()
                         )
                     }
                 }
@@ -195,18 +195,18 @@ def call(String nox_passthrough_opts,
                                 uploadCodeCoverage(
                                     report_path: "artifacts/coverage/tests-rerun-${chunk_name}.xml",
                                     report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-rerun-tests",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['tests']).flatten()
+                                    report_flags: ([distro_strings.join('-')] + report_strings + ['tests']).flatten()
                                 )
                                 uploadCodeCoverage(
                                     report_path: "artifacts/coverage/salt-rerun-${chunk_name}.xml",
                                     report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-rerun-salt",
-                                    report_flags: ([distro_strings.join('')] + report_strings + ['salt']).flatten()
+                                    report_flags: ([distro_strings.join('-')] + report_strings + ['salt']).flatten()
                                 )
                             } else {
                                 uploadCodeCoverage(
                                     report_path: "artifacts/coverage/salt-rerun-${chunk_name}.xml",
                                     report_name: "${distro_strings.join('-')}-${report_strings.join('-')}-rerun-salt",
-                                    report_flags: ([distro_strings.join('')] + report_strings).flatten()
+                                    report_flags: ([distro_strings.join('-')] + report_strings).flatten()
                                 )
                             }
                         }
