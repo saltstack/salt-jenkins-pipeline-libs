@@ -33,9 +33,11 @@ def call(String nox_passthrough_opts,
                 }
                 returnStatus = 0
             } catch (run_error) {
-                echo "Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests."
                 returnStatus = 1
-                if ( rerun_failed_tests == false ) {
+                if ( rerun_failed_tests == true ) {
+                    echo "Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests."
+                } else {
+                    error "Failed to run ${chunk_name.capitalize()} Tests ${run_type}."
                     throw run_error
                 }
             } finally {
@@ -135,8 +137,8 @@ def call(String nox_passthrough_opts,
                         }
                         returnStatus = 0
                     } catch (rerun_error) {
-                        echo "Failed to re-run ${chunk_name.capitalize()} Tests ${run_type}."
                         returnStatus = 1
+                        error "Failed to re-run ${chunk_name.capitalize()} Tests ${run_type}."
                         throw rerun_error
                     } finally {
                         sh label: 'Rename logs', script: """
