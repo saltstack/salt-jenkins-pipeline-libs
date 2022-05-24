@@ -7,10 +7,14 @@ def call(Map options) {
     def String credentials_id = options.get('credentials_id', 'codecov-upload-token-salt')
     def String credentials_variable_name = options.get('credentials_variable_name', 'CODECOV_TOKEN')
 
+    def String report_flags_str = ""
+    report_flags.each { flag ->
+        report_flags_str = "${report_flags_str} -F ${flag}"
+    }
     withEnv([
         "REPORT_PATH=${report_path}",
         "REPORT_NAME=${report_name}",
-        "REPORT_FLAGS=${report_flags.join(',')}"
+        "REPORT_FLAGS=${report_flags_str}"
     ]) {
         try {
             retry(upload_retries) {
@@ -68,7 +72,7 @@ def call(Map options) {
                                 shasum -a 256 -c codecov-linux.SHA256SUM && \
                                 chmod +x codecov-linux || exit 1
 
-                            ./codecov-linux -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" -F "${REPORT_FLAGS}" || exit 1
+                            ./codecov-linux -R $(pwd) -n "${REPORT_NAME}" -f "${REPORT_PATH}" ${REPORT_FLAGS} || exit 1
                         fi
                         '''
                     }
