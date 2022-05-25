@@ -106,11 +106,18 @@ def call(Map options) {
     }
 
     def String use_spot_instances_overridden
-    if ( env.JENKINS_URL.matches(".*private-jenkins.*") ) {
+    /* if ( env.JENKINS_URL.matches(".*private-jenkins.*") ) {
         use_spot_instances_overridden = " (Overridden. Previously set to: ${use_spot_instances})"
         use_spot_instances = false
     } else {
         use_spot_instances_overridden = ""
+    }
+    */
+
+    // For the non usage of SPOT instances
+    if ( use_spot_instances == true ) {
+        use_spot_instances_overridden = " (Overridden. Previously set to: ${use_spot_instances})"
+        use_spot_instances = false
     }
 
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
