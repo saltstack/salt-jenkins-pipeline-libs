@@ -533,10 +533,24 @@ def call(Map options) {
                             artifacts: "artifacts/*,artifacts/**/*,.kitchen/logs/*-create.log,.kitchen/logs/*-converge.log,.kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log,artifacts/xml-unittests-output/*.xml",
                             allowEmptyArchive: true
                         )
-                        junit(
-                            keepLongStdio: true,
-                            skipPublishingChecks: true,
-                            testResults: 'artifacts/xml-unittests-output/*.xml'
+                        xunit(
+                            reduceLog: false,
+                            thresholds: [
+                                failed(
+                                    failureNewThreshold: '1',
+                                    failureThreshold: '1',
+                                    unstableNewThreshold: '1',
+                                    unstableThreshold: '1'
+                                )
+                            ],
+                            tools: [
+                                xUnitDotNet(
+                                    deleteOutputFiles: false,
+                                    excludesPattern: '',
+                                    pattern: 'artifacts/xml-unittests-output/*.xml',
+                                    stopProcessingIfError: true
+                                )
+                            ]
                         )
                     }
                 }
