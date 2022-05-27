@@ -544,11 +544,12 @@ def call(Map options) {
                                 )
                             ],
                             tools: [
-                                xUnitDotNet(
+                                JUnit(
                                     deleteOutputFiles: false,
                                     excludesPattern: '',
                                     pattern: 'artifacts/xml-unittests-output/*.xml',
-                                    stopProcessingIfError: true
+                                    stopProcessingIfError: true,
+                                    skipNoTestFiles: true
                                 )
                             ]
                         )
