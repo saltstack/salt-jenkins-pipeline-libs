@@ -19,7 +19,7 @@ def call(String nox_passthrough_opts,
     stage("Run ${chunk_name.capitalize()} Tests ${run_type}") {
         try {
             local_environ = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths}"
+                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${chunk_name.capitalize()} Tests ${run_type}\" ${test_paths}"
             ]
             deleteRemoteArtifactsDir()
             try {
@@ -124,7 +124,7 @@ def call(String nox_passthrough_opts,
                 if ( returnStatus != 0 && rerun_failed_tests == true ) {
                     deleteRemoteArtifactsDir()
                     local_environ = [
-                        "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} ${test_paths} --lf"
+                        "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${chunk_name.capitalize()} Tests ${run_type} (Re-run Failed)\" ${test_paths} --lf"
                     ]
                     try {
                         withEnv(local_environ) {
