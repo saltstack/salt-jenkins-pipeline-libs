@@ -32,7 +32,7 @@ def call(String run_tests_stage_name,
             ignore_paths << "--ignore=${path}"
         }
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-            chunkReturnStatus = runTestsChunk(
+            chunkReturnStatus = runRerunTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
                 chunk_name,
@@ -57,7 +57,7 @@ def call(String run_tests_stage_name,
             ignore_paths << "--ignore=${path}"
         }
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-            chunkReturnStatus = runTestsChunk(
+            chunkReturnStatus = runRerunTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
                 chunk_name,
@@ -82,7 +82,7 @@ def call(String run_tests_stage_name,
             ignore_paths << "--ignore=${path}"
         }
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-            chunkReturnStatus = runTestsChunk(
+            chunkReturnStatus = runRerunTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
                 chunk_name,
@@ -104,7 +104,7 @@ def call(String run_tests_stage_name,
         chunk_name = "integration"
         test_paths = ignore_paths
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
-            chunkReturnStatus = runTestsChunk(
+            chunkReturnStatus = runRerunTestsChunk(
                 nox_passthrough_opts,
                 test_paths.join(" "),
                 chunk_name,
