@@ -94,7 +94,7 @@ def call(String create_stage_name,
                 artifacts: ".kitchen/logs/*-create.log",
                 allowEmptyArchive: true
             )
+            return returnStatus
         }
     }
-    return returnStatus
 }
