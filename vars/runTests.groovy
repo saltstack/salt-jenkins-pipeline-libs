@@ -7,7 +7,7 @@ def call(Map options) {
             buildDiscarder(logRotator(artifactDaysToKeepStr: '', artifactNumToKeepStr: '3', daysToKeepStr: '', numToKeepStr: '5')),
             parameters([
                 booleanParam(defaultValue: false, description: 'Run full test suite, including slow tests', name: 'runFull'),
-                booleanParam(defaultValue: false, description: 'Re-run failed tests at the end of the test run', name: 'reRunFailedTests')
+                booleanParam(defaultValue: true, description: 'Re-run failed tests at the end of the test run', name: 'reRunFailedTests')
             ])
         ])
     } else {
