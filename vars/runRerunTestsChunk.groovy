@@ -33,12 +33,11 @@ def call(String nox_passthrough_opts,
                 rerun_in_progress
             )
         } catch(Exception run1) {
-            echo "ERROR run1: ${run1}"
             returnStatus = 1
             if ( rerun_failed_tests == true ) {
-                echo "Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests."
+                echo "runRerunTestsChunk:run1: Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests: ${run1}"
             } else {
-                error "Failed to run ${chunk_name.capitalize()} Tests ${run_type}."
+                error "runRerunTestsChunk:run1: Failed to run ${chunk_name.capitalize()} Tests ${run_type}: ${run1}"
                 throw run1
             }
         } finally {
@@ -62,24 +61,27 @@ def call(String nox_passthrough_opts,
                         rerun_in_progress
                     )
                 } catch(Exception run2) {
-                    echo "ERROR run2: ${run2}"
                     returnStatus = 1
-                    error "Failed to re-run ${chunk_name.capitalize()} Tests ${run_type}."
+                    error "runRerunTestsChunk:run2: Failed to re-run ${chunk_name.capitalize()} Tests ${run_type}: ${run2}"
                     throw run2
                 }
             }
         }
     } catch(Exception run3) {
-        echo "ERROR run3: ${run3}"
+        if ( rerun_failed_tests == true ) {
+            echo "runRerunTestsChunk:run3: Failed to run ${chunk_name.capitalize()} Tests ${run_type}. Re-trying failed tests: ${run3}"
+        } else {
+            error "runRerunTestsChunk:run3: Failed to run ${chunk_name.capitalize()} Tests ${run_type}: ${run2}"
+        }
         throw run3
     } finally {
         try {
             if ( returnStatus != 0 ) {
                 currentBuild.result = 'FAILURE'
                 if ( rerun_failed_tests == true ) {
-                    error "Failed to run(and re-run failed) ${chunk_name.capitalize()} Tests ${run_type}."
+                    error "runRerunTestsChunk:finally: Failed to run(and re-run failed) ${chunk_name.capitalize()} Tests ${run_type}."
                 } else {
-                    error "Failed to run ${chunk_name.capitalize()} Tests ${run_type}."
+                    error "runRerunTestsChunk:finally: Failed to run ${chunk_name.capitalize()} Tests ${run_type}."
                 }
             }
         } finally {
