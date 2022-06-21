@@ -37,8 +37,10 @@ def call(String nox_passthrough_opts,
         return returnStatus
     }
 
+
     try {
         stage("Run ${stage_name}") {
+            echo "=======> Running ${stage_name} =======>"
             try {
                 deleteRemoteArtifactsDir()
                 try {
@@ -175,7 +177,6 @@ def call(String nox_passthrough_opts,
                         sh label: 'Delete downloaded artifacts', script: '''
                         rm -rf artifacts/ || true
                         '''
-                        return returnStatus
                     }
                 }
             }
@@ -183,5 +184,8 @@ def call(String nox_passthrough_opts,
     } catch (Exception e4) {
         error("runTestsChunk:e4: Error processing chunk: ${e4}")
         throw e4
+    } finally {
+        echo "<======= Finished running ${stage_name} <======="
+        return returnStatus
     }
 }
