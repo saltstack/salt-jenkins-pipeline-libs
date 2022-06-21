@@ -170,7 +170,8 @@ def call(String nox_passthrough_opts,
                         junit(
                             keepLongStdio: true,
                             skipPublishingChecks: true,
-                            testResults: 'artifacts/xml-unittests-output/*.xml'
+                            testResults: 'artifacts/xml-unittests-output/*.xml',
+                            allowEmptyResults: true
                         )
                     } finally {
                         // Once archived, and reported, delete
