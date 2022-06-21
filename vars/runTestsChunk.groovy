@@ -14,21 +14,30 @@ def call(String nox_passthrough_opts,
 
     def Integer returnStatus = 1;
 
-    def local_environ
-    def String stage_name
+    def local_environ;
+    def String stage_name;
+    def String chunk_name_filename;
+
     try {
         if ( rerun_in_progress ) {
+            chunk_name_filename = "rerun-${chunk_name_filename}"
             stage_name = "${chunk_name.capitalize()} Tests ${run_type} (Re-run Failed)"
             local_environ = [
                 "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" --lf ${test_paths}"
             ]
         } else {
+            chunk_name_filename = chunk_name
             stage_name = "${chunk_name.capitalize()} Tests ${run_type}"
             local_environ = [
                 "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" ${test_paths}"
             ]
         }
+    } catch (Exception e1) {
+        error("runTestsChunk:e1: Caught error while defining stage name and local environ: ${e1}")
+        return returnStatus
+    }
 
+    try {
         stage("Run ${stage_name}") {
             try {
                 deleteRemoteArtifactsDir()
@@ -43,11 +52,10 @@ def call(String nox_passthrough_opts,
                     }
                     returnStatus = 0
                 } catch (run_error) {
-                    echo "RUN ERROR (rerun_in_progress: ${rerun_in_progress}): ${run_error}"
                     returnStatus = 1
+                    error("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
                 } finally {
                     try {
-                        def chunk_name_filename = chunk_name
                         def kitchen_dst_short_log_filename = "${test_suite_name_slug}-${chunk_name_filename}"
                         if ( rerun_in_progress ) {
                             chunk_name_filename = "rerun-${chunk_name_filename}"
@@ -100,9 +108,8 @@ def call(String nox_passthrough_opts,
                         # Do not error if there are no files to compress
                         xz artifacts/logs/${chunk_name_filename}-runtests.log || true
                         """
-                    } catch (Exception e1) {
-                        echo "Error e1: ${e1}"
-                        throw e1
+                    } catch (Exception e2) {
+                        echo "runTestsChunk:e2: Error processing artifacts: ${e2}"
                     }
                     try {
                         if ( upload_test_coverage == true ) {
@@ -137,18 +144,18 @@ def call(String nox_passthrough_opts,
                                 )
                             }
                         }
-                    } catch (Exception e2) {
-                        echo "Error e2: ${e2}"
-                        throw e2
+                    } catch (Exception e3) {
+                        echo "runTestsChunk:e3: Error uploading code coverage: ${e3}"
+                    } finally {
+                        archiveArtifacts(
+                            artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log*,artifacts/logs/${chunk_name_filename}-runtests.log*",
+                            allowEmptyArchive: true
+                        )
+                        // Once archived, delete
+                        sh label: 'Delete archived logs', script: """
+                        rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name_filename}-runtests.log* || true
+                        """
                     }
-                    archiveArtifacts(
-                        artifacts: ".kitchen/logs/*-verify.log*,.kitchen/logs/*-download.log*,artifacts/logs/${chunk_name_filename}-runtests.log*",
-                        allowEmptyArchive: true
-                    )
-                    // Once archived, delete
-                    sh label: 'Delete archived logs', script: """
-                    rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name_filename}-runtests.log* || true
-                    """
                 }
             } finally {
                 try {
@@ -173,8 +180,8 @@ def call(String nox_passthrough_opts,
                 }
             }
         }
-    } catch (Exception e0) {
-        echo "ERROR e0: ${e0}"
-        throw e0
+    } catch (Exception e4) {
+        error("runTestsChunk:e4: Error processing chunk: ${e4}")
+        throw e4
     }
 }
