@@ -17,6 +17,7 @@ def call(String nox_passthrough_opts,
     def local_environ;
     def String stage_name;
     def String chunk_name_filename;
+    def Boolean skip_marking_build_unstable = true;
 
     try {
         if ( rerun_in_progress ) {
@@ -173,6 +174,7 @@ def call(String nox_passthrough_opts,
                         junit(
                             keepLongStdio: true,
                             skipPublishingChecks: true,
+                            skipMarkingBuildUnstable: skip_marking_build_unstable,
                             testResults: 'artifacts/xml-unittests-output/*.xml',
                             allowEmptyResults: true
                         )
