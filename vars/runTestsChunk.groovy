@@ -55,7 +55,12 @@ def call(String nox_passthrough_opts,
                     returnStatus = 0
                 } catch (run_error) {
                     returnStatus = 1
-                    error("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
+                    if ( rerun_in_progress ) {
+                        error("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
+                    } else {
+                        unstable("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
+                    }
+                    throw run_error
                 } finally {
                     try {
                         def kitchen_dst_short_log_filename = "${test_suite_name_slug}-${chunk_name_filename}"
