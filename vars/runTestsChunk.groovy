@@ -44,23 +44,21 @@ def call(String nox_passthrough_opts,
             try {
                 deleteRemoteArtifactsDir()
                 try {
-                    withEnv(local_environ) {
-                        withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
-                            sh(
-                                label: "Run ${stage_name}",
-                                script: 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
-                            )
+                    catchError(
+                        buildResult: 'SUCCESS',
+                        stageResult: 'FAILURE',
+                        message: "Failed to run ${stage_name}"
+                    ) {
+                        withEnv(local_environ) {
+                            withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                sh(
+                                    label: "Run ${stage_name}",
+                                    script: 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                                )
+                            }
                         }
+                        returnStatus = 0
                     }
-                    returnStatus = 0
-                } catch (run_error) {
-                    returnStatus = 1
-                    if ( rerun_in_progress ) {
-                        error("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
-                    } else {
-                        unstable("runTestsChunk:run_error: Error (rerun_in_progress: ${rerun_in_progress}): ${run_error}")
-                    }
-                    throw run_error
                 } finally {
                     try {
                         def kitchen_dst_short_log_filename = "${test_suite_name_slug}-${chunk_name_filename}"
