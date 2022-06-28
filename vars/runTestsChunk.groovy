@@ -166,24 +166,16 @@ def call(String nox_passthrough_opts,
             } finally {
                 try {
                     archiveArtifacts(
-                        artifacts: "artifacts/*,artifacts/**/*,artifacts/xml-unittests-output/*.xml",
+                        artifacts: "artifacts/*,artifacts/**/*",
                         allowEmptyArchive: true
                     )
                 } finally {
-                    try {
-                        junit(
-                            keepLongStdio: true,
-                            skipPublishingChecks: true,
-                            skipMarkingBuildUnstable: skip_marking_build_unstable,
-                            testResults: 'artifacts/xml-unittests-output/*.xml',
-                            allowEmptyResults: true
-                        )
-                    } finally {
-                        // Once archived, and reported, delete
-                        sh label: 'Delete downloaded artifacts', script: '''
-                        rm -rf artifacts/ || true
-                        '''
-                    }
+                    // Once archived, and reported, delete
+                    sh label: 'Delete downloaded artifacts', script: '''
+                    mkdir -p junit-reports || true
+                    mv artifacts/xml-unittests-output/*.xml junit-reports/
+                    rm -rf artifacts/ || true
+                    '''
                 }
             }
         }
