@@ -66,6 +66,7 @@ def call(Map options) {
         nox_env_name: nox_env_name,
         extra_parts: extra_codecov_flags,
     )
+    def Boolean system_install = options.get("system_install", false)
 
     def String kitchen_driver_file
 
@@ -150,6 +151,7 @@ def call(Map options) {
     Kitchen Verifier File: ${kitchen_verifier_file}
     Kitchen Platforms File: ${kitchen_platforms_file}
     Computed Machine Hostname: ${vm_hostname}
+    Salt System Install Test Run: ${system_install}
     """.stripIndent()
 
     def environ = [
@@ -366,7 +368,8 @@ def call(Map options) {
                                         rerun_failed_tests,
                                         "(Slow/Full)",
                                         upload_test_coverage,
-                                        upload_split_test_coverage
+                                        upload_split_test_coverage,
+                                        system_install,
                                     )
                                     if ( runTestsFullReturnCode != 0 ) {
                                         error("Failed To ${run_tests_stage_name} (Slow/Full)")
@@ -400,7 +403,8 @@ def call(Map options) {
                                             rerun_failed_tests,
                                             "(Slow/Changed)",
                                             upload_test_coverage,
-                                            upload_split_test_coverage
+                                            upload_split_test_coverage,
+                                            system_install,
                                         )
                                     }
 
@@ -421,7 +425,8 @@ def call(Map options) {
                                         rerun_failed_tests,
                                         "(Fast/Full)",
                                         upload_test_coverage,
-                                        upload_split_test_coverage
+                                        upload_split_test_coverage,
+                                        system_install,
                                     )
 
                                     if ( runTestsFullReturnCode != 0 ) {
@@ -442,7 +447,8 @@ def call(Map options) {
                                     rerun_failed_tests,
                                     "(Slow/Full)",
                                     upload_test_coverage,
-                                    upload_split_test_coverage
+                                    upload_split_test_coverage,
+                                    system_install,
                                 )
                                 if ( runTestsFullReturnCode != 0 ) {
                                     error("Failed To ${run_tests_stage_name} (Slow/Full)")

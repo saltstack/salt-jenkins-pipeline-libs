@@ -11,7 +11,8 @@ def call(String run_tests_stage_name,
          Boolean rerun_failed_tests,
          String run_type,
          Boolean upload_test_coverage,
-         Boolean upload_split_test_coverage) {
+         Boolean upload_split_test_coverage,
+         Boolean system_install) {
 
     def Integer returnStatus = 0;
     def Integer chunkReturnStatus = 0;
@@ -104,8 +105,14 @@ def call(String run_tests_stage_name,
         chunk_name = "integration"
         test_paths = ignore_paths
         timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
+            def integration_nox_passthrough_opts
+            if ( system_install ) {
+                integration_nox_passthrough_opts = "${nox_passthrough_opts} --system-install"
+            } else {
+                integration_nox_passthrough_opts = nox_passthrough_opts
+            }
             chunkReturnStatus = runRerunTestsChunk(
-                nox_passthrough_opts,
+                integration_nox_passthrough_opts,
                 test_paths.join(" "),
                 chunk_name,
                 run_type,
