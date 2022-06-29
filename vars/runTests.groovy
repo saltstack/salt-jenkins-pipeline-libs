@@ -488,6 +488,28 @@ def call(Map options) {
                         artifacts: "artifacts/xml-unittests-output/*.xml",
                         allowEmptyArchive: true
                     )
+                    allure(
+                        disabled: false,
+                        commandline: '/usr/bin/allure',
+                        includeProperties: false,
+                        //jdk: '',
+                        report: 'artifacts/allure-report',
+                        results: [
+                            [
+                                path: 'artifacts/allure-results/unit'
+                            ],
+                            [
+                                path: 'artifacts/allure-results/functional'
+                            ],
+                            [
+                                path: 'artifacts/allure-results/scenarios'
+                            ],
+                            [
+                                path: 'artifacts/allure-results/integration'
+                            ],
+                        ],
+                        reportBuildPolicy: 'ALWAYS'
+                    )
                 }
                 archiveArtifacts(
                     artifacts: "artifacts/*,artifacts/**/*",
@@ -498,7 +520,9 @@ def call(Map options) {
                 rm -rf artifacts/ || true
                 '''
                 stage(cleanup_stage_name) {
-                    sh label: 'Destroy VM', script: 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    sh label: 'Destroy VM', script: '''
+                    bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                    '''
                 }
             }
         }

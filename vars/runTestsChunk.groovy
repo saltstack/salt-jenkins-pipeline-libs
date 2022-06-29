@@ -24,13 +24,13 @@ def call(String nox_passthrough_opts,
             chunk_name_filename = "rerun-${chunk_name_filename}"
             stage_name = "${chunk_name.capitalize()} Tests ${run_type} (Re-run Failed)"
             local_environ = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" --lf ${test_paths}"
+                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" --lf --alluredir=artifacts/allure-results/${chunk_name} ${test_paths}"
             ]
         } else {
             chunk_name_filename = chunk_name
             stage_name = "${chunk_name.capitalize()} Tests ${run_type}"
             local_environ = [
-                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" ${test_paths}"
+                "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} -o \"junit_suite_name=${stage_name}\" --alluredir=artifacts/allure-results/${chunk_name} ${test_paths}"
             ]
         }
     } catch (Exception e1) {
