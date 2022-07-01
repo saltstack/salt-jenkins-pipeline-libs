@@ -476,6 +476,31 @@ def call(Map options) {
                 }
                 throw global_timeout_exception
             } finally {
+                stage("Publish Test Results") {
+                    sh label: 'Merge JUnit XML Reports', script: """
+                    python -m pip install junitparser
+                    python -m junitparser merge artifacts/xml-unittests-output/*-test-results.xml artifacts/xml-unittests-output/merged-reports.xml
+                    """
+                    junit(
+                        keepLongStdio: true,
+                        skipPublishingChecks: true,
+                        skipMarkingBuildUnstable: true,
+                        testResults: 'artifacts/xml-unittests-output/merged-reports.xml',
+                        allowEmptyResults: true
+                    )
+                    archiveArtifacts(
+                        artifacts: "artifacts/xml-unittests-output/*.xml",
+                        allowEmptyArchive: true
+                    )
+                }
+                archiveArtifacts(
+                    artifacts: "artifacts/*,artifacts/**/*",
+                    allowEmptyArchive: true
+                )
+                // Once archived, and reported, delete
+                sh label: 'Delete downloaded artifacts', script: '''
+                rm -rf artifacts/ || true
+                '''
                 stage(cleanup_stage_name) {
                     sh label: 'Destroy VM', script: 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                 }

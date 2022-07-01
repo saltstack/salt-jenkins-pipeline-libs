@@ -151,28 +151,6 @@ def call(String run_tests_stage_name,
         error "Failed to run pipeline: ${e1}"
         throw e1
     } finally {
-        try {
-            sh label: 'Merge JUnit XML Reports', script: """
-            python -m pip install junitparser
-            python -m junitparser merge junit-reports/*-results.xml junit-reports/merged-reports.xml
-            """
-            junit(
-                keepLongStdio: true,
-                skipPublishingChecks: true,
-                skipMarkingBuildUnstable: true,
-                testResults: 'junit-reports/merged-reports.xml',
-                allowEmptyResults: true
-            )
-            archiveArtifacts(
-                artifacts: "junit-reports/*.xml",
-                allowEmptyArchive: true
-            )
-        } finally {
-            // Once archived, and reported, delete
-            sh label: 'Delete downloaded artifacts', script: '''
-            rm -rf artifacts/ || true
-            '''
-        }
         return returnStatus
     }
 }
