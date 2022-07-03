@@ -477,15 +477,11 @@ def call(Map options) {
                 throw global_timeout_exception
             } finally {
                 stage("Publish Test Results") {
-                    sh label: 'Merge JUnit XML Reports', script: """
-                    python -m pip install junitparser
-                    python -m junitparser merge artifacts/xml-unittests-output/*-test-results.xml artifacts/xml-unittests-output/merged-reports.xml
-                    """
                     junit(
                         keepLongStdio: true,
                         skipPublishingChecks: true,
                         skipMarkingBuildUnstable: true,
-                        testResults: 'artifacts/xml-unittests-output/merged-reports.xml',
+                        testResults: 'artifacts/xml-unittests-output/*-test-results.xml',
                         allowEmptyResults: true
                     )
                     archiveArtifacts(
