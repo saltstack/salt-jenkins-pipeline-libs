@@ -1,6 +1,7 @@
 def call(Map options) {
 
     def Boolean run_full = true
+    def Boolean rerun_failed_tests = false
 
     if (env.CHANGE_ID) {
         properties([
@@ -37,7 +38,7 @@ def call(Map options) {
     def String distro_name = options.get('distro_name')
     def String distro_version = options.get('distro_version')
     def String distro_arch = options.get('distro_arch')
-    def String python_version = options.get('python_version')
+    def String python_version = options.get('python_version', 'py3')
     def String nox_env_name = options.get('nox_env_name')
     def String nox_passthrough_opts = options.get('nox_passthrough_opts')
     def Integer testrun_timeout = options.get('testrun_timeout', 6)
@@ -55,6 +56,7 @@ def call(Map options) {
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String test_suite_name = options.get('test_suite_name', 'full')
     def Boolean force_run_full = options.get('force_run_full', false)
+    def Boolean force_rerun_failed_tests = options.get('force_rerun_failed_tests', false)
     def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String macos_python_version = options.get('macos_python_version', '3.7')
     def String vm_hostname = computeMachineHostname(
@@ -97,6 +99,10 @@ def call(Map options) {
 
     if ( force_run_full || env.FORCE_RUN_FULL == "true" ) {
         run_full = true
+    }
+
+    if ( force_rerun_failed_tests || env.FORCE_RERUN_FAILED_TESTS ) {
+        rerun_failed_tests = true
     }
 
     if ( run_full ) {
@@ -143,6 +149,7 @@ def call(Map options) {
     Test run timeout: ${testrun_timeout} Hours
     Global Timeout: ${global_timeout} Hours
     Full Testsuite Run: ${run_full}
+    Re-run Failed Tests: ${rerun_failed_tests}
     Use SPOT instances: ${use_spot_instances}${use_spot_instances_overridden}
     RBEnv Version: ${rbenv_version}
     Jenkins Slave Label: ${jenkins_slave_label}
