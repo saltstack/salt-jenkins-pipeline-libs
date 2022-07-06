@@ -171,10 +171,12 @@ def call(Map options) {
 
     if ( macos_build == false ) {
         options['ami_image_id'] = ami_image_id
+        options['jenkins_slave_label'] = 'kitchen-slave'
     } else {
         options['vagrant_box'] = "${vagrant_box_name_testing}"
         options['vagrant_box_version'] = "${vagrant_box_version}"
         options['vagrant_box_provider'] = "${vagrant_box_provider}"
+        options['jenkins_slave_label'] = 'kitchen-slave-mac'
     }
     options["force_run_full"] = true
     options["force_rerun_failed_tests"] = true
