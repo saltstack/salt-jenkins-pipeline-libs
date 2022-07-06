@@ -10,6 +10,9 @@ def call(Map options) {
 
     def Integer build_image_timeout_minutes = options.get('build_image_timeout_minutes', 60)
 
+    // Packer
+    def String packer_version = options.get("packer_version", "1.7.4")
+
     // AWS
     def String ami_image_id
     def String ami_name_filter
@@ -56,7 +59,7 @@ def call(Map options) {
                                 stage('Build AMI') {
                                     println "Using EC2 Region: ${ec2_region}"
                                     ansiColor('xterm') {
-                                        withPackerVersion("1.7.4") {
+                                        withPackerVersion(packer_version) {
                                             sh """
                                             pyenv install 3.8.12 || echo "We already have this python."
                                             pyenv local 3.8.12
@@ -99,7 +102,7 @@ def call(Map options) {
                                             withEnv([
                                                 "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
                                             ]) {
-                                                withPackerVersion("1.7.4") {
+                                                withPackerVersion(packer_version) {
                                                     sh """
                                                     pyenv install 3.8.12 || echo "We already have this python."
                                                     pyenv local 3.8.12
@@ -272,7 +275,7 @@ def call(Map options) {
                             node(jenkins_slave_label) {
                                 try {
                                     checkout scm
-                                    withPackerVersion("1.7.4") {
+                                    withPackerVersion(packer_version) {
                                         sh """
                                         pyenv install 3.8.12 || echo "We already have this python."
                                         pyenv local 3.8.12
