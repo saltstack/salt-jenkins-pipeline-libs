@@ -6,8 +6,6 @@ def call(Map options) {
     def String distro_arch = options.get('distro_arch')
     def Integer concurrent_builds = options.get('concurrent_builds', 1)
     def String jenkins_slave_label = options.get('jenkins_slave_label', 'kitchen-slave')
-    def Boolean supports_py2 = options.get('supports_py2', true)
-    def Boolean supports_py3 = options.get('supports_py3', true)
     def String ec2_region = options.get('ec2_region', 'us-west-2')
 
     def Integer build_image_timeout_minutes = options.get('build_image_timeout_minutes', 60)
@@ -178,6 +176,8 @@ def call(Map options) {
         options['vagrant_box_version'] = "${vagrant_box_version}"
         options['vagrant_box_provider'] = "${vagrant_box_provider}"
     }
+    options["force_run_full"] = true
+    options["force_rerun_failed_tests"] = true
     options['upload_test_coverage'] = false
 
     def Boolean run_tests = true
@@ -225,64 +225,16 @@ def call(Map options) {
             }
 
             if ( run_tests == true ) {
-                if ( supports_py2 == true && supports_py3 == true ) {
-                    parallel(
-                        Py2: {
-                            def py2_options = options.clone()
-                            py2_options['python_version'] = 'py2'
-                            py2_options['test_suite_name'] = 'Py2'
-                            try {
-                                runTests(py2_options)
-                                addInfoBadge id: 'py2-test-suite', text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
-                                createSummary(icon: "/images/48x48/attribute.png", text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
-                            } catch(Exception py2_err) {
-                                addWarningBadge id: 'py2-test-suite', text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
-                                createSummary(icon: "/images/48x48/attribute.png", text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
-                                throw py2_err
-                            }
-                        },
-                        Py3: {
-                            def py3_options = options.clone()
-                            py3_options['python_version'] = 'py3'
-                            py3_options['test_suite_name'] = 'Py3'
-                            try {
-                                runTests(py3_options)
-                                addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
-                                createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
-                            } catch(Exception py3_err) {
-                                addWarningBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
-                                createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
-                                throw py3_err
-                            }
-                        },
-                        failFast: false
-                    )
-                    tests_passed = true
-                } else if ( supports_py2 == true ) {
-                    options['python_version'] = 'py2'
-                    try {
-                        runTests(options)
-                        addInfoBadge id: 'py2-test-suite', text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
-                        createSummary(icon: "/images/48x48/attribute.png", text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
-                    } catch(Exception py2_err) {
-                        addWarningBadge id: 'py2-test-suite', text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
-                        createSummary(icon: "/images/48x48/attribute.png", text: "Py2 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
-                        throw py2_err
-                    }
-                    tests_passed = true
-                } else if ( supports_py3 == true ) {
-                    options['python_version'] = 'py3'
-                    try {
-                        runTests(options)
-                        addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
-                        createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
-                    } catch(Exception py3_err) {
-                        addWarningBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
-                        createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
-                        throw py3_err
-                    }
-                    tests_passed = true
+                try {
+                    runTests(options)
+                    addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
+                    createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
+                } catch(Exception py3_err) {
+                    addWarningBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
+                    createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
+                    throw py3_err
                 }
+                tests_passed = true
             } else {
                 tests_passed = true
             }
