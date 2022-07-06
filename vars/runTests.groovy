@@ -476,13 +476,17 @@ def call(Map options) {
                 throw global_timeout_exception
             } finally {
                 stage("Publish Test Results") {
-                    junit(
-                        keepLongStdio: true,
-                        skipPublishingChecks: true,
-                        skipMarkingBuildUnstable: true,
-                        testResults: 'artifacts/xml-unittests-output/*-test-results.xml',
-                        allowEmptyResults: true
-                    )
+                    def foundFiles = sh(script: 'ls -1 artifacts/xml-unittests-output/*-test-results.xml', returnStdout: true).split()
+                    foundFiles.each { fpath ->
+                        echo "Processing artifacts/xml-unittests-output/${path}..."
+                        junit(
+                            keepLongStdio: true,
+                            skipPublishingChecks: true,
+                            skipMarkingBuildUnstable: true,
+                            testResults: "artifacts/xml-unittests-output/${fpath}",
+                            allowEmptyResults: true
+                        )
+                    }
                     archiveArtifacts(
                         artifacts: "artifacts/xml-unittests-output/*.xml",
                         allowEmptyArchive: true
