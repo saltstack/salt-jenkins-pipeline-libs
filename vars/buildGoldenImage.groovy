@@ -88,7 +88,7 @@ def call(Map options) {
                                         text: ami_built_msg
                                     )
                                     createSummary(
-                                        icon: "/images/48x48/attribute.png",
+                                        icon: "/images/svgs/attribute.svg",
                                         text: ami_built_msg
                                     )
                                 }
@@ -155,7 +155,7 @@ def call(Map options) {
                                         text: ami_built_msg
                                     )
                                     createSummary(
-                                        icon: "/images/48x48/attribute.png",
+                                        icon: "/images/svgs/attribute.svg",
                                         text: ami_built_msg
                                     )
                                 }
@@ -228,10 +228,10 @@ def call(Map options) {
                 try {
                     runTests(options)
                     addInfoBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED"
-                    createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
+                    createSummary(icon: "/images/svgs/attribute.svg", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) PASSED")
                 } catch(Exception py3_err) {
                     addWarningBadge id: 'py3-test-suite', text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED"
-                    createSummary(icon: "/images/48x48/attribute.png", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
+                    createSummary(icon: "/images/svgs/attribute.svg", text: "Py3 Test Suite against ${ami_image_id}(${ami_name_filter}) FAILED")
                     throw py3_err
                 }
                 tests_passed = true
@@ -289,11 +289,11 @@ def call(Map options) {
                             ami_built_msg = "AMI ${ami_image_id}(${ami_name_filter}) was promoted for CI duties!"
                             addBadge(
                                 id: 'promoted-ami-badge',
-                                icon: "/static/8361d0d6/images/16x16/accept.png",
+                                icon: "/static/8361d0d6/images/svgs/accept.svg",
                                 text: ami_built_msg
                             )
                             createSummary(
-                                icon: "/images/48x48/accept.png",
+                                icon: "/images/svgs/accept.svg",
                                 text: ami_built_msg
                             )
                             try {
@@ -311,7 +311,7 @@ def call(Map options) {
                                 text: "AMI ${ami_image_id}(${ami_name_filter}) was NOT promoted for CI duties!"
                             )
                             createSummary(
-                                icon: "/images/48x48/warning.png",
+                                icon: "/images/svgs/warning.svg",
                                 text: "AMI ${ami_image_id}(${ami_name_filter}) was <b>NOT</b> promoted for CI duties!"
                             )
                             try {
@@ -377,11 +377,11 @@ def call(Map options) {
                             ami_built_msg = "Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was promoted for CI duties!"
                             addBadge(
                                 id: 'promoted-ami-badge',
-                                icon: "/static/8361d0d6/images/16x16/accept.png",
+                                icon: "/static/8361d0d6/images/svgs/accept.svg",
                                 text: ami_built_msg
                             )
                             createSummary(
-                                icon: "/images/48x48/accept.png",
+                                icon: "/images/svgs/accept.svg",
                                 text: ami_built_msg
                             )
                             try {
@@ -400,7 +400,7 @@ def call(Map options) {
                                 text: error_message
                             )
                             createSummary(
-                                icon: "/images/48x48/warning.png",
+                                icon: "/images/svgs/warning.svg",
                                 text: "Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was <b>NOT</b> promoted for CI duties!"
                             )
                             try {
