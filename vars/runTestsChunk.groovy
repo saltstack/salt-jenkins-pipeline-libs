@@ -104,8 +104,9 @@ def call(String nox_passthrough_opts,
                     fi
                     mv artifacts/logs/\$(ls artifacts/logs/ | sort -r | head -n 1) artifacts/logs/${chunk_name_filename}-runtests.log || true
                     rm artifacts/logs/runtests-*.log || true
-                    mv artifacts/xml-unittests-output/\$(ls artifacts/xml-unittests-output | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name_filename}-test-results.xml || true
+                    mv \$(ls artifacts/xml-unittests-output/test-results-*.xml | sort -r | head -n 1) artifacts/xml-unittests-output/${chunk_name_filename}-test-results.xml || true
                     rm artifacts/xml-unittests-output/test-results-*.xml || true
+                    ls -lah artifacts/xml-unittests-output/ || true
                     """
                     sh label: 'Compress logs', script: """
                     # Do not error if there are no files to compress
