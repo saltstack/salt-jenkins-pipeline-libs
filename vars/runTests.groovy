@@ -132,6 +132,24 @@ def call(Map options) {
         use_spot_instances_overridden = " (Not Overridden)"
     }
 
+    // In case we're testing golden images
+    def Boolean golden_images_build = false
+    def String vagrant_box = options.get('vagrant_box', '')
+    def String vagrant_box_version = options.get('vagrant_box_version', '')
+    def String vagrant_box_provider = options.get('vagrant_box_provider', 'parallels')
+    def Boolean delete_vagrant_box = true
+
+    if ( ami_image_id != '' ) {
+        golden_images_build = true
+    } else if ( vagrant_box != '' ) {
+        golden_images_build = true
+    } else {
+        golden_images_build = false
+        if ( macos_build ) {
+            delete_vagrant_box = false
+        }
+    }
+
     // Define a global pipeline timeout. This is the test run timeout with one(1) additional
     // hour to allow for artifacts to be downloaded, if possible.
     def global_timeout = testrun_timeout + 1
@@ -183,6 +201,15 @@ def call(Map options) {
         environ << "AMI_IMAGE_ID=${ami_image_id}"
     }
 
+    if ( vagrant_box != '' ) {
+        echo """\
+        Vagrant Box: ${vagrant_box}
+        Vagrant Box Version: ${vagrant_box_version}
+        """.stripIndent()
+        environ << "VAGRANT_BOX=${vagrant_box}"
+        environ << "VAGRANT_BOX_VERSION=${vagrant_box_version}"
+    }
+
     def String clone_stage_name
     def String setup_stage_name
     def String create_stage_name
@@ -231,7 +258,29 @@ def call(Map options) {
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
                 sh label: 'Clone', script: 'git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true'
-                checkout scm
+                if ( golden_images_build == false ) {
+                    checkout scm
+                } else {
+                    checkout([
+                        $class: 'GitSCM',
+                        branches: [
+                            [name: "master"]
+                        ],
+                        doGenerateSubmoduleConfigurations: false,
+                        extensions: [
+                            [
+                                $class: 'CloneOption',
+                                noTags: false,
+                                reference: '',
+                                shallow: false
+                            ]
+                        ],
+                        submoduleCfg: [],
+                        userRemoteConfigs: [
+                            [url: "https://github.com/saltstack/salt.git"]
+                        ]
+                    ])
+                }
             }
 
             // Setup the kitchen required bundle
@@ -259,6 +308,13 @@ def call(Map options) {
                         sh label: 'Bundle Install', script: 'bundle install --with vagrant --without ec2 windows docker'
                     } else {
                         sh label: 'Bundle Install', script: 'bundle install --with ec2 windows --without docker vagrant'
+                    }
+                    if ( golden_images_build ) {
+                        // No coverage
+                        writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                        verifier:
+                          coverage: false
+                        """.stripIndent()
                     }
                 } finally {
                     sh label: 'Remove bundle install lock file', script: '''
@@ -515,6 +571,28 @@ def call(Map options) {
                 '''
                 stage(cleanup_stage_name) {
                     sh label: 'Destroy VM', script: 'bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
+                    if ( macos_build ) {
+                        try {
+                            if ( delete_vagrant_box ) {
+                                sh """
+                                set -e
+                                set -x
+                                vagrant box remove --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                                """
+                            }
+                        } catch (Exception delete_vagrant_box_error) {
+                            println "Failed to delete vagrant box: ${delete_vagrant_box_error}"
+                        }
+                        try {
+                            sh """
+                            set -e
+                            set -x
+                            vagrant box prune --keep-active-boxes --force --provider=${vagrant_box_provider} --box-version=${vagrant_box_version} ${vagrant_box} || true
+                            """
+                        } catch (Exception prune_vagrant_box_error) {
+                            println "Failed to prune vagrant box: ${prune_vagrant_box_error}"
+                        }
+                    }
                 }
             }
         }
