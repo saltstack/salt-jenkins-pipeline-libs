@@ -20,7 +20,6 @@ def call(Map options) {
     def String vagrant_box_name
     def String vagrant_box_version
     def String vagrant_box_provider
-    def String vagrant_box_artifactory_repo
     def String vagrant_box_name_testing
 
     def Boolean image_created = false
@@ -58,10 +57,10 @@ def call(Map options) {
                                 stage('Build AMI') {
                                     println "Using EC2 Region: ${ec2_region}"
                                     ansiColor('xterm') {
-                                        withPackerVersion("1.7.4") {
+                                        withPackerVersion("1.8.1") {
                                             sh """
-                                            pyenv install 3.8.12 || echo "We already have this python."
-                                            pyenv local 3.8.12
+                                            pyenv install 3.8.13 || echo "We already have this python."
+                                            pyenv local 3.8.13
                                             if [ ! -d venv ]; then
                                                 python -m venv venv
                                             fi
@@ -71,12 +70,6 @@ def call(Map options) {
                                             """
                                         }
                                     }
-                                    ami_image_id = sh (
-                                        script: """
-                                        cat manifest.json|jq -r ".builds[].artifact_id"|cut -f2 -d:
-                                        """,
-                                        returnStdout: true
-                                        ).trim()
                                     ami_name_filter = sh (
                                         script: """
                                         cat manifest.json|jq -r ".builds[].custom_data.ami_name"
@@ -97,14 +90,12 @@ def call(Map options) {
                             } else {
                                 stage('Build Vagrant Box') {
                                     ansiColor('xterm') {
-                                        withCredentials([[$class: 'StringBinding', credentialsId: 'artifactory-apikey', variable: 'ARTIFACTORY_APIKEY']]) {
-                                            withEnv([
-                                                "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                            ]) {
-                                                withPackerVersion("1.7.4") {
+                                        withCredentials([[$class: 'StringBinding']]) {
+                                            {
+                                                withPackerVersion("1.8.1") {
                                                     sh """
-                                                    pyenv install 3.8.12 || echo "We already have this python."
-                                                    pyenv local 3.8.12
+                                                    pyenv install 3.8.13 || echo "We already have this python."
+                                                    pyenv local 3.8.13
                                                     if [ ! -d venv ]; then
                                                         python -m venv venv
                                                     fi
@@ -116,9 +107,7 @@ def call(Map options) {
                                             }
                                         }
                                     }
-                                    withEnv([
-                                        "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                    ]) {
+                                    {
                                         vagrant_box_name = sh (
                                             script: """
                                             cat manifest.json|jq -r ".builds[].custom_data.box_name"
@@ -134,12 +123,6 @@ def call(Map options) {
                                         vagrant_box_provider = sh (
                                             script: """
                                             cat manifest.json|jq -r ".builds[].custom_data.box_provider"
-                                            """,
-                                            returnStdout: true
-                                            ).trim()
-                                        vagrant_box_artifactory_repo = sh (
-                                            script: """
-                                            cat manifest.json|jq -r ".builds[].custom_data.box_artifactory_repo"
                                             """,
                                             returnStdout: true
                                             ).trim()
@@ -401,26 +384,6 @@ def call(Map options) {
                                     message: "\n\n\n${input_message}\n\n\nPromote Vagrant Box ${vagrant_box_name}?\n",
                                     ok: 'Promote!'
                                 )
-                            }
-                            node(jenkins_slave_label) {
-                                try {
-                                    checkout scm
-                                    withCredentials([[$class: 'StringBinding', credentialsId: 'artifactory-apikey', variable: 'ARTIFACTORY_APIKEY']]) {
-                                        withEnv([
-                                            "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                        ]) {
-                                            sh """
-                                            export JFROG_CLI_OFFER_CONFIG=false
-                                            jfrog rt move --url=\$ARTIFACTORY_URL --apikey=\$ARTIFACTORY_APIKEY --flat \
-                                                --spec-vars='box_name=macosx-${vagrant_box_name};box_provider=${vagrant_box_provider};box_version=${vagrant_box_version};promoted=true'
-                                                ${vagrant_box_artifactory_repo}/${vagrant_box_name_testing}-v${vagrant_box_version}.box
-                                                ${vagrant_box_artifactory_repo}/${vagrant_box_name}-v${vagrant_box_version}.box
-                                            """
-                                        }
-                                    }
-                                } finally {
-                                    cleanWs notFailBuild: true
-                                }
                             }
                             ami_built_msg = "Vagrant Box ${vagrant_box_name}(${vagrant_box_version}) was promoted for CI duties!"
                             addBadge(
