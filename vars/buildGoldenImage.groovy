@@ -61,8 +61,8 @@ def call(Map options) {
                                     ansiColor('xterm') {
                                         withPackerVersion(packer_version) {
                                             sh """
-                                            pyenv install 3.8.12 || echo "We already have this python."
-                                            pyenv local 3.8.12
+                                            pyenv install 3.8.13 || echo "We already have this python."
+                                            pyenv local 3.8.13
                                             if [ ! -d venv ]; then
                                                 python -m venv venv
                                             fi
@@ -104,8 +104,8 @@ def call(Map options) {
                                             ]) {
                                                 withPackerVersion(packer_version) {
                                                     sh """
-                                                    pyenv install 3.8.12 || echo "We already have this python."
-                                                    pyenv local 3.8.12
+                                                    pyenv install 3.8.13 || echo "We already have this python."
+                                                    pyenv local 3.8.13
                                                     if [ ! -d venv ]; then
                                                         python -m venv venv
                                                     fi
@@ -277,8 +277,8 @@ def call(Map options) {
                                     checkout scm
                                     withPackerVersion(packer_version) {
                                         sh """
-                                        pyenv install 3.8.12 || echo "We already have this python."
-                                        pyenv local 3.8.12
+                                        pyenv install 3.8.13 || echo "We already have this python."
+                                        pyenv local 3.8.13
                                         if [ ! -d venv ]; then
                                             python -m venv venv
                                         fi
