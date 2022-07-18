@@ -11,7 +11,7 @@ def call(Map options) {
     def Integer build_image_timeout_minutes = options.get('build_image_timeout_minutes', 60)
 
     // Packer
-    def String packer_version = options.get("packer_version", "1.7.4")
+    def String packer_version = options.get("packer_version", "1.8.1")
 
     // AWS
     def String ami_image_id
