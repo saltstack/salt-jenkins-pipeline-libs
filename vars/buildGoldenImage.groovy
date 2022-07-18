@@ -21,7 +21,6 @@ def call(Map options) {
     def String vagrant_box_name
     def String vagrant_box_version
     def String vagrant_box_provider
-    def String vagrant_box_artifactory_repo
     def String vagrant_box_name_testing
 
     def Boolean image_created = false
@@ -98,28 +97,18 @@ def call(Map options) {
                             } else {
                                 stage('Build Vagrant Box') {
                                     ansiColor('xterm') {
-                                        withCredentials([[$class: 'StringBinding', credentialsId: 'artifactory-apikey', variable: 'ARTIFACTORY_APIKEY']]) {
-                                            withEnv([
-                                                "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                            ]) {
-                                                withPackerVersion(packer_version) {
-                                                    sh """
-                                                    pyenv install 3.8.13 || echo "We already have this python."
-                                                    pyenv local 3.8.13
-                                                    if [ ! -d venv ]; then
-                                                        python -m venv venv
-                                                    fi
-                                                    . venv/bin/activate
-                                                    pip install -r os-images/requirements/py3.6/base.txt
-                                                    inv build-osx ${packer_staging_flag} --distro-version=${distro_version} --distro-arch=${distro_arch} --salt-pr=${env.CHANGE_ID}
-                                                    """
-                                                }
-                                            }
+                                        withPackerVersion(packer_version) {
+                                            sh """
+                                            pyenv install 3.8.13 || echo "We already have this python."
+                                            pyenv local 3.8.13
+                                            if [ ! -d venv ]; then
+                                                python -m venv venv
+                                            fi
+                                            . venv/bin/activate
+                                            pip install -r os-images/requirements/py3.6/base.txt
+                                            inv build-osx ${packer_staging_flag} --distro-version=${distro_version} --distro-arch=${distro_arch} --salt-pr=${env.CHANGE_ID}
+                                            """
                                         }
-                                    }
-                                    withEnv([
-                                        "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                    ]) {
                                         vagrant_box_name = sh (
                                             script: """
                                             cat manifest.json|jq -r ".builds[].custom_data.box_name"
@@ -135,12 +124,6 @@ def call(Map options) {
                                         vagrant_box_provider = sh (
                                             script: """
                                             cat manifest.json|jq -r ".builds[].custom_data.box_provider"
-                                            """,
-                                            returnStdout: true
-                                            ).trim()
-                                        vagrant_box_artifactory_repo = sh (
-                                            script: """
-                                            cat manifest.json|jq -r ".builds[].custom_data.box_artifactory_repo"
                                             """,
                                             returnStdout: true
                                             ).trim()
@@ -362,19 +345,7 @@ def call(Map options) {
                             node(jenkins_slave_label) {
                                 try {
                                     checkout scm
-                                    withCredentials([[$class: 'StringBinding', credentialsId: 'artifactory-apikey', variable: 'ARTIFACTORY_APIKEY']]) {
-                                        withEnv([
-                                            "ARTIFACTORY_URL=https://artifactory.saltstack.net/artifactory"
-                                        ]) {
-                                            sh """
-                                            export JFROG_CLI_OFFER_CONFIG=false
-                                            jfrog rt move --url=\$ARTIFACTORY_URL --apikey=\$ARTIFACTORY_APIKEY --flat \
-                                                --spec-vars='box_name=macosx-${vagrant_box_name};box_provider=${vagrant_box_provider};box_version=${vagrant_box_version};promoted=true'
-                                                ${vagrant_box_artifactory_repo}/${vagrant_box_name_testing}-v${vagrant_box_version}.box
-                                                ${vagrant_box_artifactory_repo}/${vagrant_box_name}-v${vagrant_box_version}.box
-                                            """
-                                        }
-                                    }
+                                    error "We currently can't upload built macOS images anywhere"
                                 } finally {
                                     cleanWs notFailBuild: true
                                 }
