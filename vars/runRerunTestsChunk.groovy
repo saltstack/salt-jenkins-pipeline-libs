@@ -1,3 +1,5 @@
+import org.jenkinsci.plugins.pipeline.modeldefinition.Utils
+
 
 def call(String nox_passthrough_opts,
          String test_paths,
@@ -64,6 +66,11 @@ def call(String nox_passthrough_opts,
                     returnStatus = 1
                     error "runRerunTestsChunk:run2: Failed to re-run ${chunk_name.capitalize()} Tests ${run_type}: ${run2}"
                     throw run2
+                }
+            } else {
+                def skipped_stage_name = "${chunk_name.capitalize()} Tests ${run_type} (Re-run Failed)"
+                stage("Run ${skipped_stage_name}") {
+                    Utils.markStageSkippedForConditional("Run ${skipped_stage_name}")
                 }
             }
         }
