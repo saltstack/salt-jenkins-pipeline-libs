@@ -50,7 +50,7 @@ def call(Map options) {
                         timestamps {
 
                             // Checkout the repo
-                            stage('Clone') {
+                            stage('Clone Golden Images Repo') {
                                 checkout scm
                             }
 

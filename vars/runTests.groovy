@@ -233,7 +233,7 @@ def call(Map options) {
 
     if ( test_suite_name == 'full' ) {
         test_suite_name_slug = test_suite_name
-        clone_stage_name = "Clone"
+        clone_stage_name = "Clone Salt"
         setup_stage_name = "Setup"
         create_stage_name = "Create VM"
         vagrant_box_details_stage_name = "Vagrant Box Details"
@@ -244,7 +244,7 @@ def call(Map options) {
         upload_stage_name = "Upload Coverage"
     } else {
         test_suite_name_slug = "${test_suite_name.replaceAll('#', '').replaceAll('\\s+', '-').toLowerCase()}"
-        clone_stage_name = "Clone for ${test_suite_name.capitalize()} Tests"
+        clone_stage_name = "Clone Salt for ${test_suite_name.capitalize()} Tests"
         setup_stage_name = "Setup for ${test_suite_name.capitalize()} Tests"
         create_stage_name = "Create ${test_suite_name.capitalize()} Tests VM"
         vagrant_box_details_stage_name = "${test_suite_name.capitalize()} Vagrant Box Details"
@@ -268,7 +268,12 @@ def call(Map options) {
             // Checkout the repo
             stage(clone_stage_name) {
                 cleanWs notFailBuild: true
-                sh label: 'Clone', script: 'git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true'
+                sh(
+                    label: 'Clone Local Salt Repo',
+                    script: '''
+                    git clone --quiet --local /var/jenkins/salt.git . || true ; git config --unset remote.origin.url || true
+                    '''
+                )
                 if ( golden_images_build == false ) {
                     checkout scm
                 } else {
