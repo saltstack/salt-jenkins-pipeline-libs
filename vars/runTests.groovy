@@ -220,6 +220,17 @@ def call(Map options) {
     def String cleanup_stage_name
     def String upload_stage_name
 
+    if ( use_spot_instances == true ) {
+        // Since we reserve for spot instances for a maximum of 6 hours,
+        // and we also set the maximum of some of the pipelines to 6 hours,
+        // the following timeout get's 15 minutes shaved off so that we
+        // have at least that ammount of time to download artifacts
+        testrun_timeout = testrun_timeout * 60 - 15
+    } else {
+        // Just convert the testrun timeout to minutes
+        testrun_timeout = testrun_timeout * 60
+    }
+
     if ( test_suite_name == 'full' ) {
         test_suite_name_slug = test_suite_name
         clone_stage_name = "Clone"
@@ -349,7 +360,7 @@ def call(Map options) {
                 // and we also set the maximum of some of the pipelines to 6 hours,
                 // the following timeout get's 15 minutes shaved off so that we
                 // have at least that ammount of time to download artifacts
-                timeout(time: testrun_timeout * 60 - 15, unit: 'MINUTES') {
+                timeout(time: testrun_timeout, unit: 'MINUTES') {
                     try {
                         convergeExitCode = runTestsConvergeVM(
                             converge_stage_name,
