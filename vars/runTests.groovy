@@ -59,6 +59,7 @@ def call(Map options) {
     def Boolean force_rerun_failed_tests = options.get('force_rerun_failed_tests', false)
     def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String macos_python_version = options.get('macos_python_version', '3.7')
+    def String ssh_username = options.get('ssh_username', '')
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -325,7 +326,15 @@ def call(Map options) {
                     } else {
                         sh label: 'Bundle Install', script: 'bundle install --with ec2 windows --without docker vagrant'
                     }
-                    if ( golden_images_build ) {
+                    if ( golden_images_build && ssh_username != "") {
+                        // No coverage, custom username
+                        writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
+                        verifier:
+                          coverage: false
+                        transport:
+                          username: ${ssh_username}
+                        """.stripIndent()
+                    } else if ( golden_images_build) {
                         // No coverage
                         writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
                         verifier:
