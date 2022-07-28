@@ -161,6 +161,41 @@ def call(String nox_passthrough_opts,
                     sh label: 'Delete archived logs', script: """
                     rm .kitchen/logs/*-verify.log* .kitchen/logs/*-download.log* artifacts/logs/${chunk_name_filename}-runtests.log* || true
                     """
+                    sh(
+                        label: 'List Test Reports',
+                        script: '''
+                        ls -lah artifacts/xml-unittests-output/
+                        '''
+                    )
+                    def foundFiles = findFiles(glob: 'artifacts/xml-unittests-output/*-test-results.xml')
+                    foundFiles.each { file ->
+                        echo "Processing ${file.path}... // ${file}"
+                        junit(
+                            keepLongStdio: true,
+                            skipPublishingChecks: true,
+                            skipMarkingBuildUnstable: true,
+                            testResults: file.path,
+                            allowEmptyResults: true
+                        )
+                    }
+                    archiveArtifacts(
+                        artifacts: "artifacts/xml-unittests-output/*.xml",
+                        allowEmptyArchive: true
+                    )
+                    // Once archived, and reported, delete
+                    sh label: 'Delete downloaded JUnit XML artifacts', script: '''
+                    rm -rf artifacts/xml-unittests-output/*.xml || true
+                    '''
+                    archiveArtifacts(
+                        artifacts: "artifacts/*,artifacts/**/*",
+                        allowEmptyArchive: true
+                    )
+                    // Once archived, and reported, delete
+                    sh label: 'Delete downloaded artifacts', script: '''
+                    rm -rf artifacts/ || true
+                    '''
+
+
                 }
             }
         }
