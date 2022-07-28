@@ -3,7 +3,7 @@ def call(Map options) {
     def String report_path = options.get('report_path')
     def String report_name = options.get('report_name')
     def String[] report_flags = options.get('report_flags')
-    def Integer upload_retries = options.get('upload_retries', 3)
+    def Integer upload_retries = options.get('upload_retries', 2)
     def String credentials_id = options.get('credentials_id', 'codecov-upload-token-salt')
     def String credentials_variable_name = options.get('credentials_variable_name', 'CODECOV_TOKEN')
 
