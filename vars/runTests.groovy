@@ -326,20 +326,17 @@ def call(Map options) {
                     } else {
                         sh label: 'Bundle Install', script: 'bundle install --with ec2 windows --without docker vagrant'
                     }
-                    if ( golden_images_build && ssh_username != "") {
-                        // No coverage, custom username
-                        writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
-                        verifier:
-                          coverage: false
-                        transport:
-                          username: ${ssh_username}
-                        """.stripIndent()
-                    } else if ( golden_images_build) {
+                    if ( golden_images_build ) {
                         // No coverage
-                        writeFile encoding: 'utf-8', file: '.kitchen.local.yml', text: """\
-                        verifier:
-                          coverage: false
-                        """.stripIndent()
+                        sh label: 'Disable code coverage', script: '''
+                        echo -e 'verifier:\\n  coverage: false\\n' >> .kitchen.local.yml
+                        '''
+                    }
+                    if ( ssh_username != '' ) {
+                        // User provided username
+                        sh label: 'Set user provided ssh username to use', script: """
+                        echo -e 'transport:\\n  username: ${ssh_username}\\n' >> .kitchen.local.yml
+                        """
                     }
                 } finally {
                     sh label: 'Remove bundle install lock file', script: '''
