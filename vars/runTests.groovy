@@ -328,9 +328,9 @@ def call(Map options) {
                     }
                     if ( golden_images_build ) {
                         // No coverage
-                        sh label: 'Disable code coverage', script: '''
+                        sh label: 'Disable code coverage', script: """
                         echo -e 'verifier:\\n  coverage: false\\n' >> .kitchen.local.yml
-                        '''
+                        """
                     }
                     if ( ssh_username != '' ) {
                         // User provided username
@@ -338,6 +338,7 @@ def call(Map options) {
                         echo -e 'transport:\\n  username: ${ssh_username}\\n' >> .kitchen.local.yml
                         """
                     }
+                    sh label: 'Check .kitchen.local.yml contents', script: 'cat .kitchen.local.yml || true'
                 } finally {
                     sh label: 'Remove bundle install lock file', script: '''
                     rm -f /tmp/lock_bundle
