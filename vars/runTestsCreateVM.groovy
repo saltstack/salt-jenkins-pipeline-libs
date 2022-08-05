@@ -59,9 +59,9 @@ def call(String create_stage_name,
                         if ( use_spot_instances ) {
                             retry(3) {
                                 sh label: 'Create SPOT VM', script: '''
-                                cp -f ~/workspace/spot.yml .kitchen.local.yml
+                                cp -f ~/workspace/spot.yml kitchen.local.yml
                                 t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                                bundle exec kitchen create --log-level=debug $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                bundle exec kitchen create --log-level=debug $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                                 '''
                             }
                         } else {
@@ -93,7 +93,7 @@ def call(String create_stage_name,
                     } finally {
                         sh '''
                         rm -f kitchen-diagnose-info.txt
-                        rm -f .kitchen.local.yml
+                        rm -f kitchen.local.yml
                         '''
                     }
                 }
