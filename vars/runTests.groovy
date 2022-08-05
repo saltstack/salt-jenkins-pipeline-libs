@@ -335,7 +335,7 @@ def call(Map options) {
                     if ( ssh_username != '' ) {
                         // User provided username
                         sh label: 'Set user provided ssh username to use', script: """
-                        echo -e 'transport:\\n  username: ${ssh_username}\\n' >> kitchen.local.yml
+                        echo -e 'platforms:\\n  - name: ${python_version}-${distro_name}-${distro_version}-${distro_arch}\\n    transport:\\n      username: ${ssh_username}\\n' >> kitchen.local.yml
                         """
                     }
                     sh label: 'Check kitchen.local.yml contents', script: 'cat kitchen.local.yml || true'
@@ -356,7 +356,7 @@ def call(Map options) {
                 if ( ssh_username != '' ) {
                     // User provided username
                     sh label: 'Set user provided ssh username to use', script: """
-                    echo -e 'transport:\\n  username: ${ssh_username}\\n' >> kitchen.local.yml
+                    echo -e 'platforms:\\n  - name: ${python_version}-${distro_name}-${distro_version}-${distro_arch}\\n    transport:\\n      username: ${ssh_username}\\n' >> kitchen.local.yml
                     """
                 }
                 sh label: 'Check kitchen.local.yml contents', script: 'cat kitchen.local.yml || true'
