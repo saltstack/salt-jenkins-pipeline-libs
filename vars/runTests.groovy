@@ -59,7 +59,6 @@ def call(Map options) {
     def Boolean force_rerun_failed_tests = options.get('force_rerun_failed_tests', false)
     def Boolean disable_from_filenames = options.get('disable_from_filenames', false)
     def String macos_python_version = options.get('macos_python_version', '3.7')
-    def String ssh_username = options.get('ssh_username', '')
     def String vm_hostname = computeMachineHostname(
         env: env,
         distro_name: distro_name,
@@ -332,12 +331,6 @@ def call(Map options) {
                         echo -e 'verifier:\\n  coverage: false\\n' >> kitchen.local.yml
                         """
                     }
-                    if ( ssh_username != '' ) {
-                        // User provided username
-                        sh label: 'Set user provided ssh username to use', script: """
-                        echo -e 'platforms:\\n  - name: ${python_version}-${distro_name}-${distro_version}-${distro_arch}\\n    transport:\\n      username: ${ssh_username}\\n' >> kitchen.local.yml
-                        """
-                    }
                     sh label: 'Check kitchen.local.yml contents', script: 'cat kitchen.local.yml || true'
                 } finally {
                     sh label: 'Remove bundle install lock file', script: '''
@@ -351,12 +344,6 @@ def call(Map options) {
                     // No coverage
                     sh label: 'Disable code coverage', script: """
                     echo -e 'verifier:\\n  coverage: false\\n' >> kitchen.local.yml
-                    """
-                }
-                if ( ssh_username != '' ) {
-                    // User provided username
-                    sh label: 'Set user provided ssh username to use', script: """
-                    echo -e 'platforms:\\n  - name: ${python_version}-${distro_name}-${distro_version}-${distro_arch}\\n    transport:\\n      username: ${ssh_username}\\n' >> kitchen.local.yml
                     """
                 }
                 sh label: 'Check kitchen.local.yml contents', script: 'cat kitchen.local.yml || true'
