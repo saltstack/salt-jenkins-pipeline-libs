@@ -61,13 +61,13 @@ def call(String create_stage_name,
                                 sh label: 'Create SPOT VM', script: '''
                                 cp -f ~/workspace/spot.yml .kitchen.local.yml
                                 t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                                bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                                bundle exec kitchen create --log-level=debug $TEST_SUITE-$TEST_PLATFORM || (bundle exec kitchen destroy $TEST_SUITE-$TEST_PLATFORM; rm .kitchen.local.yml; bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM); (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                                 '''
                             }
                         } else {
                             sh label: 'Create VM', script: '''
                             t=$(shuf -i 30-150 -n 1); echo "Sleeping $t seconds"; sleep $t
-                            bundle exec kitchen create $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
+                            bundle exec kitchen create --log-level=debug $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);
                             '''
                         }
                         returnStatus = 0
