@@ -479,7 +479,7 @@ def call(Map options) {
 
                     stage(download_stage_name) {
                         withEnv([
-                            "ONLY_DOWNLOAD_ARTEFACTS=1"
+                            "ONLY_DOWNLOAD_ARTEFACTS=1",
                             "PRINT_TEST_SELECTION=0",
                             "PRINT_TEST_PLAN_ONLY=0"
                         ]){
