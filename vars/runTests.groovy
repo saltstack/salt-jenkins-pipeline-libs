@@ -382,7 +382,11 @@ def call(Map options) {
                         try {
                             timeout(activity: true, time: inactivity_timeout_minutes, unit: 'MINUTES') {
                                 stage(run_tests_stage_name) {
-                                    withEnv(["DONT_DOWNLOAD_ARTEFACTS=1"]) {
+                                    withEnv([
+                                        "DONT_DOWNLOAD_ARTEFACTS=1",
+                                        "PRINT_TEST_SELECTION=1",
+                                        "PRINT_TEST_PLAN_ONLY=0",
+                                    ]) {
                                         sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM; (exitcode=$?; echo "ExitCode: $exitcode"; exit $exitcode);'
                                     }
                                 }
@@ -429,7 +433,9 @@ def call(Map options) {
 
                                 local_environ = [
                                     "FORCE_FULL=false",
-                                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --run-slow"
+                                    "NOX_PASSTHROUGH_OPTS=${nox_passthrough_opts} --run-slow",
+                                    "PRINT_TEST_SELECTION=1",
+                                    "PRINT_TEST_PLAN_ONLY=0",
                                 ]
                                 if ( disable_from_filenames == false ) {
                                     local_environ << "NOX_ENABLE_FROM_FILENAMES=1"
@@ -472,7 +478,11 @@ def call(Map options) {
                     reportKnownProblems(conditions_found, ".kitchen/logs/${python_version}-${distro_name}-${distro_version}-${distro_arch}-${test_suite_name_slug}-verify.log")
 
                     stage(download_stage_name) {
-                        withEnv(["ONLY_DOWNLOAD_ARTEFACTS=1"]){
+                        withEnv([
+                            "ONLY_DOWNLOAD_ARTEFACTS=1"
+                            "PRINT_TEST_SELECTION=0",
+                            "PRINT_TEST_PLAN_ONLY=0",
+                        ]){
                             sh 'bundle exec kitchen verify $TEST_SUITE-$TEST_PLATFORM || exit 0'
                         }
                         sh """
